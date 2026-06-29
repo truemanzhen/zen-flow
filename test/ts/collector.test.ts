@@ -8,8 +8,7 @@ interface ChangeFixture {
   name: string;
   yaml?: Record<string, string>;
   tasks?: string;
-  proposal?: boolean;
-  design?: boolean;
+  spec?: boolean;
   plan?: boolean;
   verifyReport?: string | null; // body or null to skip the file
   status?: 'active' | 'archived';
@@ -19,28 +18,25 @@ async function writeChange(root: string, fixture: ChangeFixture): Promise<void> 
   const status = fixture.status ?? 'active';
   const baseDir =
     status === 'archived'
-      ? path.join(root, 'openspec', 'changes', 'archive', fixture.name)
-      : path.join(root, 'openspec', 'changes', fixture.name);
+      ? path.join(root, 'specs', 'archive', fixture.name)
+      : path.join(root, 'specs', fixture.name);
   await fs.mkdir(baseDir, { recursive: true });
 
   if (fixture.yaml) {
     const lines = Object.entries(fixture.yaml).map(([k, v]) => `${k}: ${v}`);
-    await fs.writeFile(path.join(baseDir, '.comet.yaml'), `${lines.join('\n')}\n`);
+    await fs.writeFile(path.join(baseDir, '.zcw.yaml'), `${lines.join('\n')}\n`);
   }
   if (fixture.tasks !== undefined) {
     await fs.writeFile(path.join(baseDir, 'tasks.md'), fixture.tasks);
   }
-  if (fixture.proposal) {
-    await fs.writeFile(path.join(baseDir, 'proposal.md'), '# Proposal\n');
-  }
-  if (fixture.design) {
-    await fs.writeFile(path.join(baseDir, 'design.md'), '# Design\n');
+  if (fixture.spec) {
+    await fs.writeFile(path.join(baseDir, 'spec.md'), '# Spec\n');
   }
   if (fixture.plan) {
     await fs.writeFile(path.join(baseDir, 'plan.md'), '# Plan\n');
   }
   if (fixture.verifyReport != null) {
-    const reportDir = path.join(baseDir, '.comet');
+    const reportDir = path.join(baseDir, '.zcw');
     await fs.mkdir(reportDir, { recursive: true });
     await fs.writeFile(path.join(reportDir, 'verify-result.md'), fixture.verifyReport);
   }
@@ -50,14 +46,14 @@ describe('collectDashboardSnapshot', () => {
   let root: string;
 
   beforeEach(async () => {
-    root = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-collector-'));
+    root = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-collector-'));
   });
 
   afterEach(async () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it('returns an empty snapshot when openspec/changes is missing', async () => {
+  it('returns an empty snapshot when specs is missing', async () => {
     const snap = await collectDashboardSnapshot(root);
 
     expect(snap.changes.active).toEqual([]);
@@ -71,26 +67,24 @@ describe('collectDashboardSnapshot', () => {
       name: 'dashboard-v0',
       yaml: { phase: 'build', workflow: 'full' },
       tasks: '## A\n- [x] done\n- [ ] todo\n',
-      proposal: true,
-      design: true,
+      spec: true,
       plan: true,
     });
     // archive/ subdirectory should not appear as an active candidate
-    await fs.mkdir(path.join(root, 'openspec', 'changes', 'archive'), { recursive: true });
+    await fs.mkdir(path.join(root, 'specs', 'archive'), { recursive: true });
 
     const snap = await collectDashboardSnapshot(root);
 
     expect(snap.changes.active.map((c) => c.name)).toEqual(['dashboard-v0']);
     expect(snap.changes.active[0].phase).toBe('build');
     expect(snap.changes.active[0].tasks).toMatchObject({ completed: 1, total: 2 });
-    expect(snap.changes.active[0].next).toMatchObject({ command: '/comet-build' });
+    expect(snap.changes.active[0].next).toMatchObject({ command: '/zcw-build' });
     expect(snap.changes.active[0].artifacts).toEqual({
-      proposal: true,
-      design: true,
+      spec: true,
       tasks: true,
       plan: true,
       verifyReport: false,
-      cometYaml: true,
+      zcwYaml: true,
     });
   });
 
@@ -100,8 +94,7 @@ describe('collectDashboardSnapshot', () => {
       status: 'archived',
       yaml: { phase: 'archive', archived: 'true', verify_result: 'pass' },
       tasks: '## Foo\n- [x] done\n',
-      proposal: true,
-      design: true,
+      spec: true,
       plan: true,
       verifyReport: '# Verify\nAll passed.',
     });
@@ -127,22 +120,20 @@ describe('collectDashboardSnapshot', () => {
     await writeChange(root, {
       name: 'docs-cleanup',
       yaml: { phase: 'design', workflow: 'full' },
-      proposal: true,
+      spec: true,
     });
     await writeChange(root, {
       name: 'auth-refactor',
       yaml: { phase: 'verify', verify_result: 'fail', workflow: 'full' },
       tasks: '- [x] done\n',
-      proposal: true,
-      design: true,
+      spec: true,
       plan: true,
     });
     await writeChange(root, {
       name: 'dashboard-v0',
       yaml: { phase: 'build', workflow: 'full' },
       tasks: '- [x] one\n- [ ] two\n',
-      proposal: true,
-      design: true,
+      spec: true,
       plan: true,
     });
 
@@ -238,10 +229,10 @@ describe('collectDashboardSnapshot', () => {
       tasks: '- [ ] one\n',
     });
 
-    // Plant an unreadable .comet.yaml (a directory where a file should be)
+    // Plant an unreadable .zcw.yaml (a directory where a file should be)
     // so the per-change build throws when it tries to read it.
-    const bogusDir = path.join(root, 'openspec', 'changes', 'bogus');
-    await fs.mkdir(path.join(bogusDir, '.comet.yaml'), { recursive: true });
+    const bogusDir = path.join(root, 'specs', 'bogus');
+    await fs.mkdir(path.join(bogusDir, '.zcw.yaml'), { recursive: true });
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     try {

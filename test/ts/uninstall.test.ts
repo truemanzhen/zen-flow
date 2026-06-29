@@ -5,15 +5,15 @@ import os from 'os';
 
 import { PLATFORMS, type Platform } from '../../src/core/platforms.js';
 import {
-  removeCometSkillsForPlatform,
-  removeCometRulesForPlatform,
-  removeCometHooksForPlatform,
+  removeZCWSkillsForPlatform,
+  removeZCWRulesForPlatform,
+  removeZCWHooksForPlatform,
   removeWorkingDirs,
 } from '../../src/core/uninstall.js';
 import {
-  copyCometSkillsForPlatform,
-  copyCometRulesForPlatform,
-  installCometHooksForPlatform,
+  copyZCWSkillsForPlatform,
+  copyZCWRulesForPlatform,
+  installZCWHooksForPlatform,
 } from '../../src/core/skills.js';
 import { fileExists, removeFile, removeDir, isDirEmpty } from '../../src/utils/file-system.js';
 
@@ -23,7 +23,7 @@ describe('uninstall', () => {
   beforeEach(async () => {
     tmpDir = path.join(
       os.tmpdir(),
-      `comet-uninstall-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `zcw-uninstall-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     await fs.mkdir(tmpDir, { recursive: true });
   });
@@ -116,27 +116,27 @@ describe('uninstall', () => {
     });
   });
 
-  describe('removeCometSkillsForPlatform', () => {
+  describe('removeZCWSkillsForPlatform', () => {
     const claudePlatform: Platform = PLATFORMS.find((p) => p.id === 'claude')!;
 
-    it('removes installed Comet skills', async () => {
-      await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    it('removes installed ZCW skills', async () => {
+      await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
 
       const skillsDir = path.join(tmpDir, '.claude', 'skills');
       const entriesBefore = await fs.readdir(skillsDir);
-      const cometEntries = entriesBefore.filter((e) => e.startsWith('comet'));
-      expect(cometEntries.length).toBeGreaterThan(0);
+      const zcwEntries = entriesBefore.filter((e) => e.startsWith('zcw'));
+      expect(zcwEntries.length).toBeGreaterThan(0);
 
-      const result = await removeCometSkillsForPlatform(tmpDir, claudePlatform, 'project');
+      const result = await removeZCWSkillsForPlatform(tmpDir, claudePlatform, 'project');
       expect(result.removed).toBeGreaterThan(0);
 
-      for (const entry of cometEntries) {
+      for (const entry of zcwEntries) {
         expect(await fileExists(path.join(skillsDir, entry))).toBe(false);
       }
     });
 
     it('handles already-removed skills gracefully', async () => {
-      const result = await removeCometSkillsForPlatform(tmpDir, claudePlatform, 'project');
+      const result = await removeZCWSkillsForPlatform(tmpDir, claudePlatform, 'project');
       expect(result.removed).toBe(0);
       expect(result.failed).toBe(0);
     });
@@ -144,60 +144,60 @@ describe('uninstall', () => {
     it('removes OpenCode commands', async () => {
       const opencodePlatform: Platform = PLATFORMS.find((p) => p.id === 'opencode')!;
 
-      await copyCometSkillsForPlatform(tmpDir, opencodePlatform, true, 'skills', 'project');
+      await copyZCWSkillsForPlatform(tmpDir, opencodePlatform, true, 'skills', 'project');
 
       const commandsDir = path.join(tmpDir, '.opencode', 'commands');
       expect(await fileExists(commandsDir)).toBe(true);
 
-      const result = await removeCometSkillsForPlatform(tmpDir, opencodePlatform, 'project');
+      const result = await removeZCWSkillsForPlatform(tmpDir, opencodePlatform, 'project');
       expect(result.removed).toBeGreaterThan(0);
     });
 
     it('removes only the managed Pi extension and preserves shared settings', async () => {
       const piPlatform: Platform = PLATFORMS.find((p) => p.id === 'pi')!;
       const extensionsDir = path.join(tmpDir, '.pi', 'extensions');
-      const cometExtension = path.join(extensionsDir, 'comet-commands.ts');
+      const zcwExtension = path.join(extensionsDir, 'zcw-commands.ts');
       const unrelatedExtension = path.join(extensionsDir, 'custom.ts');
       const settingsPath = path.join(tmpDir, '.pi', 'settings.json');
 
       await fs.mkdir(path.dirname(settingsPath), { recursive: true });
       await fs.writeFile(settingsPath, JSON.stringify({ theme: 'dark' }), 'utf-8');
-      await copyCometSkillsForPlatform(tmpDir, piPlatform, true, 'skills', 'project');
+      await copyZCWSkillsForPlatform(tmpDir, piPlatform, true, 'skills', 'project');
       await fs.writeFile(unrelatedExtension, 'export default function custom() {}', 'utf-8');
 
-      const result = await removeCometSkillsForPlatform(tmpDir, piPlatform, 'project');
+      const result = await removeZCWSkillsForPlatform(tmpDir, piPlatform, 'project');
       const settings = JSON.parse(await fs.readFile(settingsPath, 'utf-8'));
 
       expect(result.removed).toBeGreaterThan(0);
-      expect(await fileExists(cometExtension)).toBe(false);
+      expect(await fileExists(zcwExtension)).toBe(false);
       expect(await fileExists(unrelatedExtension)).toBe(true);
       expect(settings).toEqual({ theme: 'dark', enableSkillCommands: true });
     });
 
-    it('removes Comet skills from the legacy global Pi directory', async () => {
+    it('removes ZCW skills from the legacy global Pi directory', async () => {
       const piPlatform: Platform = PLATFORMS.find((p) => p.id === 'pi')!;
-      const legacySkill = path.join(tmpDir, '.pi', 'skills', 'comet', 'SKILL.md');
+      const legacySkill = path.join(tmpDir, '.pi', 'skills', 'zcw', 'SKILL.md');
 
       await fs.mkdir(path.dirname(legacySkill), { recursive: true });
-      await fs.writeFile(legacySkill, '# Comet', 'utf-8');
+      await fs.writeFile(legacySkill, '# ZCW', 'utf-8');
 
-      const result = await removeCometSkillsForPlatform(tmpDir, piPlatform, 'global');
+      const result = await removeZCWSkillsForPlatform(tmpDir, piPlatform, 'global');
 
       expect(result.removed).toBe(1);
       expect(await fileExists(legacySkill)).toBe(false);
     });
   });
 
-  describe('removeCometRulesForPlatform', () => {
+  describe('removeZCWRulesForPlatform', () => {
     it('removes rules for a platform that supports them', async () => {
       const claudePlatform: Platform = PLATFORMS.find((p) => p.id === 'claude')!;
 
-      await copyCometRulesForPlatform(tmpDir, claudePlatform, true, 'project');
+      await copyZCWRulesForPlatform(tmpDir, claudePlatform, true, 'project');
 
-      const rulePath = path.join(tmpDir, '.claude', 'rules', 'comet-phase-guard.md');
+      const rulePath = path.join(tmpDir, '.claude', 'rules', 'zcw-phase-guard.md');
       expect(await fileExists(rulePath)).toBe(true);
 
-      const result = await removeCometRulesForPlatform(tmpDir, claudePlatform, 'project');
+      const result = await removeZCWRulesForPlatform(tmpDir, claudePlatform, 'project');
       expect(result.removed).toBeGreaterThan(0);
       expect(await fileExists(rulePath)).toBe(false);
     });
@@ -205,12 +205,12 @@ describe('uninstall', () => {
     it('removes Cursor MDC format rules', async () => {
       const cursorPlatform: Platform = PLATFORMS.find((p) => p.id === 'cursor')!;
 
-      await copyCometRulesForPlatform(tmpDir, cursorPlatform, true, 'project');
+      await copyZCWRulesForPlatform(tmpDir, cursorPlatform, true, 'project');
 
-      const rulePath = path.join(tmpDir, '.cursor', 'rules', 'comet-phase-guard.mdc');
+      const rulePath = path.join(tmpDir, '.cursor', 'rules', 'zcw-phase-guard.mdc');
       expect(await fileExists(rulePath)).toBe(true);
 
-      const result = await removeCometRulesForPlatform(tmpDir, cursorPlatform, 'project');
+      const result = await removeZCWRulesForPlatform(tmpDir, cursorPlatform, 'project');
       expect(result.removed).toBeGreaterThan(0);
       expect(await fileExists(rulePath)).toBe(false);
     });
@@ -218,30 +218,30 @@ describe('uninstall', () => {
     it('removes GitHub Copilot instructions format', async () => {
       const copilotPlatform: Platform = PLATFORMS.find((p) => p.id === 'github-copilot')!;
 
-      await copyCometRulesForPlatform(tmpDir, copilotPlatform, true, 'project');
+      await copyZCWRulesForPlatform(tmpDir, copilotPlatform, true, 'project');
 
       const rulePath = path.join(
         tmpDir,
         '.github',
         'instructions',
-        'comet-phase-guard.instructions.md',
+        'zcw-phase-guard.instructions.md',
       );
       expect(await fileExists(rulePath)).toBe(true);
 
-      const result = await removeCometRulesForPlatform(tmpDir, copilotPlatform, 'project');
+      const result = await removeZCWRulesForPlatform(tmpDir, copilotPlatform, 'project');
       expect(result.removed).toBeGreaterThan(0);
       expect(await fileExists(rulePath)).toBe(false);
     });
 
     it('skips platforms without rules support', async () => {
       const geminiPlatform: Platform = PLATFORMS.find((p) => p.id === 'gemini')!;
-      const result = await removeCometRulesForPlatform(tmpDir, geminiPlatform, 'project');
+      const result = await removeZCWRulesForPlatform(tmpDir, geminiPlatform, 'project');
       expect(result.removed).toBe(0);
     });
   });
 
-  describe('removeCometHooksForPlatform', () => {
-    it('removes Claude Code hooks while preserving non-Comet hooks', async () => {
+  describe('removeZCWHooksForPlatform', () => {
+    it('removes Claude Code hooks while preserving non-ZCW hooks', async () => {
       const claudePlatform: Platform = PLATFORMS.find((p) => p.id === 'claude')!;
 
       const settingsDir = path.join(tmpDir, '.claude');
@@ -255,7 +255,7 @@ describe('uninstall', () => {
               hooks: [
                 {
                   type: 'command',
-                  command: 'bash .claude/skills/comet/scripts/comet-hook-guard.sh',
+                  command: 'bash .claude/skills/zcw/scripts/zcw-hook-guard.sh',
                 },
                 { type: 'command', command: 'bash my-custom-hook.sh' },
               ],
@@ -265,9 +265,9 @@ describe('uninstall', () => {
       };
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
 
-      await installCometHooksForPlatform(tmpDir, claudePlatform, 'project');
+      await installZCWHooksForPlatform(tmpDir, claudePlatform, 'project');
 
-      const result = await removeCometHooksForPlatform(tmpDir, claudePlatform, 'project');
+      const result = await removeZCWHooksForPlatform(tmpDir, claudePlatform, 'project');
       expect(result.removed).toBeGreaterThan(0);
 
       const updatedContent = await fs.readFile(settingsPath, 'utf-8');
@@ -279,7 +279,7 @@ describe('uninstall', () => {
         (g.hooks as Array<Record<string, unknown>>).map((h: Record<string, unknown>) => h.command),
       );
       expect(allCommands).toContain('bash my-custom-hook.sh');
-      expect(allCommands.some((c: string) => c.includes('comet-hook-guard'))).toBe(false);
+      expect(allCommands.some((c: string) => c.includes('zcw-hook-guard'))).toBe(false);
     });
 
     it('removes Copilot hook file', async () => {
@@ -287,12 +287,12 @@ describe('uninstall', () => {
 
       const hooksDir = path.join(tmpDir, '.github', 'hooks');
       await fs.mkdir(hooksDir, { recursive: true });
-      const hookFilePath = path.join(hooksDir, 'comet-guard.json');
+      const hookFilePath = path.join(hooksDir, 'zcw-guard.json');
       await fs.writeFile(hookFilePath, JSON.stringify({ version: 1 }), 'utf-8');
 
       expect(await fileExists(hookFilePath)).toBe(true);
 
-      const result = await removeCometHooksForPlatform(tmpDir, copilotPlatform, 'project');
+      const result = await removeZCWHooksForPlatform(tmpDir, copilotPlatform, 'project');
       expect(result.removed).toBe(1);
       expect(await fileExists(hookFilePath)).toBe(false);
     });
@@ -302,19 +302,19 @@ describe('uninstall', () => {
 
       const hooksDir = path.join(tmpDir, '.kiro', 'hooks');
       await fs.mkdir(hooksDir, { recursive: true });
-      const hookFilePath = path.join(hooksDir, 'comet-hook-guard.kiro.hook');
+      const hookFilePath = path.join(hooksDir, 'zcw-hook-guard.kiro.hook');
       await fs.writeFile(hookFilePath, JSON.stringify({ enabled: true }), 'utf-8');
 
       expect(await fileExists(hookFilePath)).toBe(true);
 
-      const result = await removeCometHooksForPlatform(tmpDir, kiroPlatform, 'project');
+      const result = await removeZCWHooksForPlatform(tmpDir, kiroPlatform, 'project');
       expect(result.removed).toBe(1);
       expect(await fileExists(hookFilePath)).toBe(false);
     });
 
     it('skips platforms without hooks support', async () => {
       const cursorPlatform: Platform = PLATFORMS.find((p) => p.id === 'cursor')!;
-      const result = await removeCometHooksForPlatform(tmpDir, cursorPlatform, 'project');
+      const result = await removeZCWHooksForPlatform(tmpDir, cursorPlatform, 'project');
       expect(result.removed).toBe(0);
     });
 
@@ -332,7 +332,7 @@ describe('uninstall', () => {
               hooks: [
                 {
                   type: 'command',
-                  command: 'bash .claude/skills/comet/scripts/comet-hook-guard.sh',
+                  command: 'bash .claude/skills/zcw/scripts/zcw-hook-guard.sh',
                 },
               ],
             },
@@ -341,7 +341,7 @@ describe('uninstall', () => {
       };
       await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
 
-      const result = await removeCometHooksForPlatform(tmpDir, claudePlatform, 'project');
+      const result = await removeZCWHooksForPlatform(tmpDir, claudePlatform, 'project');
       expect(result.removed).toBe(1);
 
       const updatedContent = await fs.readFile(settingsPath, 'utf-8');
@@ -351,14 +351,14 @@ describe('uninstall', () => {
   });
 
   describe('removeWorkingDirs', () => {
-    it('removes .comet directory', async () => {
-      const cometDir = path.join(tmpDir, '.comet');
-      await fs.mkdir(cometDir, { recursive: true });
-      await fs.writeFile(path.join(cometDir, 'config.yaml'), 'test: true', 'utf-8');
+    it('removes .zcw directory', async () => {
+      const zcwDir = path.join(tmpDir, '.zcw');
+      await fs.mkdir(zcwDir, { recursive: true });
+      await fs.writeFile(path.join(zcwDir, 'config.yaml'), 'test: true', 'utf-8');
 
       const result = await removeWorkingDirs(tmpDir);
       expect(result.removed).toBeGreaterThan(0);
-      expect(await fileExists(cometDir)).toBe(false);
+      expect(await fileExists(zcwDir)).toBe(false);
     });
 
     it('removes empty docs/superpowers directories', async () => {
@@ -385,30 +385,30 @@ describe('uninstall', () => {
   });
 
   describe('full uninstall cycle', () => {
-    it('installs and then completely removes Comet for Claude Code', async () => {
+    it('installs and then completely removes ZCW for Claude Code', async () => {
       const claudePlatform: Platform = PLATFORMS.find((p) => p.id === 'claude')!;
 
       // Install everything
-      await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
-      await copyCometRulesForPlatform(tmpDir, claudePlatform, true, 'project');
-      await installCometHooksForPlatform(tmpDir, claudePlatform, 'project');
+      await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+      await copyZCWRulesForPlatform(tmpDir, claudePlatform, true, 'project');
+      await installZCWHooksForPlatform(tmpDir, claudePlatform, 'project');
 
       // Verify installation
       const skillsDir = path.join(tmpDir, '.claude', 'skills');
-      const skillEntries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('comet'));
+      const skillEntries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('zcw'));
       expect(skillEntries.length).toBeGreaterThan(0);
 
-      const rulePath = path.join(tmpDir, '.claude', 'rules', 'comet-phase-guard.md');
+      const rulePath = path.join(tmpDir, '.claude', 'rules', 'zcw-phase-guard.md');
       expect(await fileExists(rulePath)).toBe(true);
 
       // Uninstall everything
-      const skillsResult = await removeCometSkillsForPlatform(tmpDir, claudePlatform, 'project');
+      const skillsResult = await removeZCWSkillsForPlatform(tmpDir, claudePlatform, 'project');
       expect(skillsResult.removed).toBeGreaterThan(0);
 
-      const rulesResult = await removeCometRulesForPlatform(tmpDir, claudePlatform, 'project');
+      const rulesResult = await removeZCWRulesForPlatform(tmpDir, claudePlatform, 'project');
       expect(rulesResult.removed).toBeGreaterThan(0);
 
-      const hooksResult = await removeCometHooksForPlatform(tmpDir, claudePlatform, 'project');
+      const hooksResult = await removeZCWHooksForPlatform(tmpDir, claudePlatform, 'project');
       expect(hooksResult.removed).toBeGreaterThan(0);
 
       // Verify complete removal
@@ -442,7 +442,7 @@ describe('uninstallCommand interactive selection', () => {
     mockedSelect.mockResolvedValue(true as never);
     tmpDir = path.join(
       os.tmpdir(),
-      `comet-uninstall-cmd-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `zcw-uninstall-cmd-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     await fs.mkdir(tmpDir, { recursive: true });
   });
@@ -453,7 +453,7 @@ describe('uninstallCommand interactive selection', () => {
 
   it('auto-selects single target and uninstalls on confirmation', async () => {
     const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
-    await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
 
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
@@ -466,13 +466,13 @@ describe('uninstallCommand interactive selection', () => {
     expect(mockedCheckbox).not.toHaveBeenCalled();
 
     const skillsDir = path.join(tmpDir, '.claude', 'skills');
-    const entries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('comet'));
+    const entries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('zcw'));
     expect(entries.length).toBe(0);
   });
 
   it('cancels when single target user declines', async () => {
     const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
-    await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
 
     mockedSelect.mockResolvedValue(false as never);
 
@@ -484,17 +484,17 @@ describe('uninstallCommand interactive selection', () => {
     }
 
     const skillsDir = path.join(tmpDir, '.claude', 'skills');
-    const entries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('comet'));
+    const entries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('zcw'));
     expect(entries.length).toBeGreaterThan(0);
   });
 
   it('shows checkbox when multiple targets detected', async () => {
     const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
-    await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
     // Create a second platform (codex) fixture
-    const codexDir = path.join(tmpDir, '.codex', 'skills', 'comet');
+    const codexDir = path.join(tmpDir, '.codex', 'skills', 'zcw');
     await fs.mkdir(codexDir, { recursive: true });
-    await fs.writeFile(path.join(codexDir, 'SKILL.md'), '# Comet', 'utf-8');
+    await fs.writeFile(path.join(codexDir, 'SKILL.md'), '# ZCW', 'utf-8');
 
     mockedCheckbox.mockResolvedValue(['claude:project'] as never);
 
@@ -510,7 +510,7 @@ describe('uninstallCommand interactive selection', () => {
 
     // Claude should be uninstalled
     const claudeSkillsDir = path.join(tmpDir, '.claude', 'skills');
-    const claudeEntries = (await fs.readdir(claudeSkillsDir)).filter((e) => e.startsWith('comet'));
+    const claudeEntries = (await fs.readdir(claudeSkillsDir)).filter((e) => e.startsWith('zcw'));
     expect(claudeEntries.length).toBe(0);
 
     // Codex should remain
@@ -519,7 +519,7 @@ describe('uninstallCommand interactive selection', () => {
 
   it('skips prompt with --force and uninstalls all', async () => {
     const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
-    await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
 
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     try {
@@ -532,13 +532,13 @@ describe('uninstallCommand interactive selection', () => {
     expect(mockedCheckbox).not.toHaveBeenCalled();
 
     const skillsDir = path.join(tmpDir, '.claude', 'skills');
-    const entries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('comet'));
+    const entries = (await fs.readdir(skillsDir)).filter((e) => e.startsWith('zcw'));
     expect(entries.length).toBe(0);
   });
 
   it('skips prompt with --json and uninstalls all', async () => {
     const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
-    await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await copyZCWSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
 
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     let jsonOutput;
@@ -566,7 +566,7 @@ describe('uninstallCommand interactive selection', () => {
       log.mockRestore();
     }
 
-    expect(output).toContain('No Comet installations found');
+    expect(output).toContain('No ZCW installations found');
     expect(mockedSelect).not.toHaveBeenCalled();
   });
 });

@@ -42,8 +42,8 @@ describe('startDashboardServer', () => {
   let handles: Array<{ close: () => Promise<void> }> = [];
 
   beforeEach(async () => {
-    projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-srv-proj-'));
-    webDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-srv-web-'));
+    projectDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-srv-proj-'));
+    webDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-srv-web-'));
     await fs.writeFile(
       path.join(webDir, 'index.html'),
       '<!doctype html><title>Dashboard</title><p>hi</p>',

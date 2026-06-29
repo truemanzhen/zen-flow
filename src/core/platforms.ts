@@ -1,8 +1,8 @@
 /**
  * Platform Definitions
  *
- * Supported AI coding platforms, mirroring OpenSpec's AI_TOOLS config.
- * Reference: OpenSpec/src/core/config.ts
+ * Supported AI coding platforms, mirroring Spec Kit integration IDs.
+ * Reference: Spec Kit agent integration names
  */
 
 import type { InstallScope } from './types.js';
@@ -13,7 +13,7 @@ export interface Platform {
   skillsDir: string;
   globalSkillsDir?: string;
   detectionPaths?: string[];
-  openspecToolId: string;
+  specKitIntegrationId: string;
   /** Platform's rules/instructions subdirectory relative to rulesBaseDir (defaults to baseDir). Omit if unsupported. */
   rulesDir?: string;
   /** Override base directory for rules. When set, rules go to rulesBaseDir/rulesDir instead of skillsDir/rulesDir. Useful when rules live outside the skills config dir (e.g., Cline's .clinerules/ is at project root, not inside .cline/). */
@@ -22,7 +22,7 @@ export interface Platform {
   rulesFormat?: 'md' | 'mdc' | 'copilot';
   /** Whether this platform supports PreToolUse hooks. */
   supportsHooks?: boolean;
-  /** Hook configuration format. Determines how installCometHooksForPlatform writes the hook config. */
+  /** Hook configuration format. Determines how installZCWHooksForPlatform writes the hook config. */
   hookFormat?: 'claude-code' | 'gemini' | 'windsurf' | 'copilot' | 'qwen' | 'kiro' | 'qoder';
 }
 
@@ -43,7 +43,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Claude Code',
     skillsDir: '.claude',
     globalSkillsDir: '.claude',
-    openspecToolId: 'claude',
+    specKitIntegrationId: 'claude',
     rulesDir: 'rules',
     rulesFormat: 'md',
     supportsHooks: true,
@@ -54,7 +54,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Cursor',
     skillsDir: '.cursor',
     globalSkillsDir: '.cursor',
-    openspecToolId: 'cursor',
+    specKitIntegrationId: 'cursor',
     rulesDir: 'rules',
     rulesFormat: 'mdc',
   },
@@ -63,7 +63,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Codex',
     skillsDir: '.codex',
     globalSkillsDir: '.codex',
-    openspecToolId: 'codex',
+    specKitIntegrationId: 'codex',
     rulesDir: 'rules',
     rulesFormat: 'md',
     supportsHooks: true,
@@ -74,7 +74,7 @@ export const PLATFORMS: Platform[] = [
     name: 'OpenCode',
     skillsDir: '.opencode',
     globalSkillsDir: '.config/opencode',
-    openspecToolId: 'opencode',
+    specKitIntegrationId: 'opencode',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },
@@ -83,7 +83,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Windsurf',
     skillsDir: '.windsurf',
     globalSkillsDir: '.windsurf',
-    openspecToolId: 'windsurf',
+    specKitIntegrationId: 'windsurf',
     rulesDir: 'rules',
     rulesFormat: 'md',
     supportsHooks: true,
@@ -94,7 +94,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Cline',
     skillsDir: '.cline',
     globalSkillsDir: '.cline',
-    openspecToolId: 'cline',
+    specKitIntegrationId: 'cline',
     // Cline rules go to .clinerules/ at project root, NOT inside .cline/
     rulesBaseDir: '',
     rulesDir: '.clinerules',
@@ -105,7 +105,7 @@ export const PLATFORMS: Platform[] = [
     name: 'RooCode',
     skillsDir: '.roo',
     globalSkillsDir: '.roo',
-    openspecToolId: 'roocode',
+    specKitIntegrationId: 'roocode',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },
@@ -114,7 +114,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Continue',
     skillsDir: '.continue',
     globalSkillsDir: '.continue',
-    openspecToolId: 'continue',
+    specKitIntegrationId: 'continue',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },
@@ -129,7 +129,7 @@ export const PLATFORMS: Platform[] = [
       '.github/prompts',
       '.github/skills',
     ],
-    openspecToolId: 'github-copilot',
+    specKitIntegrationId: 'github-copilot',
     // Copilot uses .github/instructions/*.instructions.md format
     rulesDir: 'instructions',
     rulesFormat: 'copilot',
@@ -141,7 +141,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Gemini CLI',
     skillsDir: '.gemini',
     globalSkillsDir: '.gemini',
-    openspecToolId: 'gemini',
+    specKitIntegrationId: 'gemini',
     // Gemini uses GEMINI.md files, not a rules directory — no rulesDir
     supportsHooks: true,
     hookFormat: 'gemini',
@@ -151,7 +151,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Amazon Q Developer',
     skillsDir: '.amazonq',
     globalSkillsDir: '.amazonq',
-    openspecToolId: 'amazon-q',
+    specKitIntegrationId: 'amazon-q',
     rulesDir: 'rules',
     rulesFormat: 'md',
     supportsHooks: true,
@@ -162,7 +162,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Qwen Code',
     skillsDir: '.qwen',
     globalSkillsDir: '.qwen',
-    openspecToolId: 'qwen',
+    specKitIntegrationId: 'qwen',
     rulesDir: 'rules',
     rulesFormat: 'md',
     supportsHooks: true,
@@ -173,7 +173,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Kilo Code',
     skillsDir: '.kilocode',
     globalSkillsDir: '.kilocode',
-    openspecToolId: 'kilocode',
+    specKitIntegrationId: 'kilocode',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },
@@ -182,7 +182,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Auggie (Augment CLI)',
     skillsDir: '.augment',
     globalSkillsDir: '.augment',
-    openspecToolId: 'auggie',
+    specKitIntegrationId: 'auggie',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },
@@ -191,7 +191,7 @@ export const PLATFORMS: Platform[] = [
     name: 'Kiro',
     skillsDir: '.kiro',
     globalSkillsDir: '.kiro',
-    openspecToolId: 'kiro',
+    specKitIntegrationId: 'kiro',
     // Kiro uses .kiro/steering/ not .kiro/rules/
     rulesDir: 'steering',
     rulesFormat: 'md',
@@ -203,36 +203,41 @@ export const PLATFORMS: Platform[] = [
     name: 'Kimi Code',
     skillsDir: '.kimi-code',
     globalSkillsDir: '.kimi-code',
-    openspecToolId: 'kimi',
+    specKitIntegrationId: 'kimi',
   },
   {
     id: 'lingma',
     name: 'Lingma',
     skillsDir: '.lingma',
     globalSkillsDir: '.lingma',
-    openspecToolId: 'lingma',
+    specKitIntegrationId: 'lingma',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },
-  { id: 'junie', name: 'Junie', skillsDir: '.junie', openspecToolId: 'junie' },
-  { id: 'codebuddy', name: 'CodeBuddy Code', skillsDir: '.codebuddy', openspecToolId: 'codebuddy' },
-  { id: 'costrict', name: 'CoStrict', skillsDir: '.cospec', openspecToolId: 'costrict' },
-  { id: 'crush', name: 'Crush', skillsDir: '.crush', openspecToolId: 'crush' },
-  { id: 'factory', name: 'Factory Droid', skillsDir: '.factory', openspecToolId: 'factory' },
-  { id: 'iflow', name: 'iFlow', skillsDir: '.iflow', openspecToolId: 'iflow' },
+  { id: 'junie', name: 'Junie', skillsDir: '.junie', specKitIntegrationId: 'junie' },
+  {
+    id: 'codebuddy',
+    name: 'CodeBuddy Code',
+    skillsDir: '.codebuddy',
+    specKitIntegrationId: 'codebuddy',
+  },
+  { id: 'costrict', name: 'CoStrict', skillsDir: '.cospec', specKitIntegrationId: 'costrict' },
+  { id: 'crush', name: 'Crush', skillsDir: '.crush', specKitIntegrationId: 'crush' },
+  { id: 'factory', name: 'Factory Droid', skillsDir: '.factory', specKitIntegrationId: 'factory' },
+  { id: 'iflow', name: 'iFlow', skillsDir: '.iflow', specKitIntegrationId: 'iflow' },
   {
     id: 'pi',
     name: 'Pi',
     skillsDir: '.pi',
     globalSkillsDir: '.pi/agent',
-    openspecToolId: 'pi',
+    specKitIntegrationId: 'pi',
   },
   {
     id: 'qoder',
     name: 'Qoder',
     skillsDir: '.qoder',
     globalSkillsDir: '.qoder',
-    openspecToolId: 'qoder',
+    specKitIntegrationId: 'qoder',
     rulesDir: 'rules',
     rulesFormat: 'md',
     supportsHooks: true,
@@ -243,16 +248,16 @@ export const PLATFORMS: Platform[] = [
     name: 'Antigravity',
     skillsDir: '.agents',
     globalSkillsDir: '.gemini/antigravity',
-    openspecToolId: 'antigravity',
+    specKitIntegrationId: 'antigravity',
   },
-  { id: 'bob', name: 'Bob Shell', skillsDir: '.bob', openspecToolId: 'bob' },
-  { id: 'forgecode', name: 'ForgeCode', skillsDir: '.forge', openspecToolId: 'forgecode' },
+  { id: 'bob', name: 'Bob Shell', skillsDir: '.bob', specKitIntegrationId: 'bob' },
+  { id: 'forgecode', name: 'ForgeCode', skillsDir: '.forge', specKitIntegrationId: 'forgecode' },
   {
     id: 'trae',
     name: 'Trae',
     skillsDir: '.trae',
     globalSkillsDir: '.trae',
-    openspecToolId: 'trae',
+    specKitIntegrationId: 'trae',
     rulesDir: 'rules',
     rulesFormat: 'md',
   },

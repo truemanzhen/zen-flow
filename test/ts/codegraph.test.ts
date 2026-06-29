@@ -14,7 +14,7 @@ describe('codegraph', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'comet-codegraph-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zcw-codegraph-'));
     vi.resetAllMocks();
     vi.resetModules();
   });
@@ -49,22 +49,21 @@ describe('codegraph', () => {
     expect(mockedExecFileSync).not.toHaveBeenCalled();
   });
 
-  it('uses a pnpm global CodeGraph binary instead of reinstalling with npm', async () => {
-    const pnpmBinDir = path.join(tmpDir, 'pnpm-bin');
-    fs.mkdirSync(pnpmBinDir, { recursive: true });
+  function createProjectCodegraphShim(): string {
+    const binDir = path.join(tmpDir, 'node_modules', '.bin');
+    fs.mkdirSync(binDir, { recursive: true });
     const shimName = process.platform === 'win32' ? 'codegraph.cmd' : 'codegraph';
-    const shimPath = path.join(pnpmBinDir, shimName);
+    const shimPath = path.join(binDir, shimName);
     fs.writeFileSync(shimPath, '');
+    return shimPath;
+  }
+
+  it('uses a project-local CodeGraph binary instead of reinstalling with npm', async () => {
+    const shimPath = createProjectCodegraphShim();
 
     mockedExecFileSync.mockImplementation((command: unknown, args?: unknown) => {
       const cmd = String(command);
-      const cmdArgs = Array.isArray(args) ? args.map(String) : [];
-      if ((cmd === 'where' || cmd === 'which') && cmdArgs[0] === 'codegraph') {
-        throw new Error('not on PATH');
-      }
-      if ((cmd === 'pnpm' || cmd === 'pnpm.cmd') && cmdArgs.join(' ') === 'bin -g') {
-        return `${pnpmBinDir}\n`;
-      }
+      if (cmd === shimPath) return Buffer.from('ok');
       return Buffer.from('ok');
     });
 
@@ -81,5 +80,79 @@ describe('codegraph', () => {
     expect(mockedExecFileSync.mock.calls).toContainEqual(
       expect.arrayContaining([shimPath, ['install', '--yes']]),
     );
+  });
+
+  it('reports CodeGraph status from node_modules without requiring a global CLI', async () => {
+    const shimPath = createProjectCodegraphShim();
+
+    const { getCodegraphStatus } = await import('../../src/core/codegraph.js');
+    const status = getCodegraphStatus(tmpDir);
+
+    expect(status).toMatchObject({
+      command: shimPath,
+      cliInstalled: true,
+      indexed: false,
+    });
+    expect(status.next).toContain('zcw graph init');
+  });
+
+  it('runs CodeGraph search with fallback command candidates', async () => {
+    const shimPath = createProjectCodegraphShim();
+    fs.mkdirSync(path.join(tmpDir, '.codegraph'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, '.codegraph', 'codegraph.db'), '');
+
+    mockedExecFileSync.mockImplementation((command: unknown, args?: unknown) => {
+      const cmd = String(command);
+      const cmdArgs = Array.isArray(args) ? args.map(String) : [];
+      if (cmd === shimPath && cmdArgs[0] === 'search') {
+        throw new Error('unsupported search');
+      }
+      if (cmd === shimPath && cmdArgs[0] === 'query') {
+        return 'src/core/codegraph.ts\n';
+      }
+      throw new Error(`unexpected command: ${cmd} ${cmdArgs.join(' ')}`);
+    });
+
+    const { runCodegraphQuery } = await import('../../src/core/codegraph.js');
+    const result = runCodegraphQuery(tmpDir, { mode: 'search', query: 'codegraph' });
+
+    expect(result.args).toEqual(['query', 'codegraph']);
+    expect(result.output).toBe('src/core/codegraph.ts');
+  });
+
+  it('includes CodeGraph output in zcw load --code JSON', async () => {
+    const shimPath = createProjectCodegraphShim();
+    fs.mkdirSync(path.join(tmpDir, '.codegraph'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, '.codegraph', 'codegraph.db'), '');
+
+    mockedExecFileSync.mockImplementation((command: unknown, args?: unknown) => {
+      const cmd = String(command);
+      const cmdArgs = Array.isArray(args) ? args.map(String) : [];
+      if (cmd === shimPath && cmdArgs[0] === 'search') {
+        return 'src/commands/knowledge.ts\n';
+      }
+      throw new Error(`unexpected command: ${cmd} ${cmdArgs.join(' ')}`);
+    });
+
+    const { addKnowledgeEntry } = await import('../../src/core/knowledge.js');
+    await addKnowledgeEntry(tmpDir, {
+      kind: 'kn',
+      title: 'Knowledge command',
+      content: 'Searches local knowledge.',
+    });
+
+    const { loadCommand } = await import('../../src/commands/knowledge.js');
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let json = '';
+    try {
+      await loadCommand(tmpDir, { query: 'knowledge', code: true, json: true });
+      json = log.mock.calls.at(-1)?.join(' ') ?? '';
+    } finally {
+      log.mockRestore();
+    }
+
+    const parsed = JSON.parse(json);
+    expect(parsed.results).toHaveLength(1);
+    expect(parsed.codegraph.output).toBe('src/commands/knowledge.ts');
   });
 });

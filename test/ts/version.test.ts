@@ -144,7 +144,7 @@ describe('printVersionInfo', () => {
 
     await printVersionInfo(log);
 
-    expect(logs[0]).toMatch(/^  Comet v\d+\.\d+\.\d+$/);
+    expect(logs[0]).toMatch(/^  ZCW v\d+\.\d+\.\d+$/);
     expect(logs[1]).toContain('99.99.99');
     expect(logs[1]).toContain('npm update -g');
   });
@@ -157,7 +157,7 @@ describe('printVersionInfo', () => {
 
     await printVersionInfo(log);
 
-    expect(logs[0]).toMatch(/^  Comet v/);
+    expect(logs[0]).toMatch(/^  ZCW v/);
     expect(logs[1]).toContain('latest version');
   });
 
@@ -170,6 +170,6 @@ describe('printVersionInfo', () => {
     await printVersionInfo(log);
 
     expect(logs).toHaveLength(1);
-    expect(logs[0]).toMatch(/^  Comet v/);
+    expect(logs[0]).toMatch(/^  ZCW v/);
   });
 });

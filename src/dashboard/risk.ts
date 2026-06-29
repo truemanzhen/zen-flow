@@ -11,7 +11,7 @@ import type {
 interface ChangeRiskInput {
   status: 'active' | 'archived';
   phase: ChangePhase;
-  hasCometYaml: boolean;
+  hasZCWYaml: boolean;
   tasks: TasksSummary;
   verify: VerifySummary;
   artifacts: ArtifactsSummary;
@@ -20,19 +20,17 @@ interface ChangeRiskInput {
 
 /**
  * Risk rules per the dashboard PRD. Each rule is independent so the same
- * change can surface several risks at once (e.g. failed verify + missing
- * artifact). Codes are stable identifiers for the frontend / future API
- * consumers.
+ * change can surface several risks at once.
  */
 export function buildChangeRisks(input: ChangeRiskInput): DashboardRisk[] {
   const risks: DashboardRisk[] = [];
 
-  if (!input.hasCometYaml) {
+  if (!input.hasZCWYaml) {
     risks.push({
       level: 'warning',
-      code: 'MISSING_COMET_YAML',
-      message: '该 change 缺少 .comet.yaml，无法判定准确状态。',
-      suggestion: '运行 /comet-open 或手动补齐 .comet.yaml。',
+      code: 'MISSING_ZCW_YAML',
+      message: '该 change 缺少 .zcw.yaml，无法判定准确状态。',
+      suggestion: '运行 /zcw-open 或手动补齐 .zcw.yaml。',
     });
   }
 
@@ -41,7 +39,7 @@ export function buildChangeRisks(input: ChangeRiskInput): DashboardRisk[] {
       level: 'warning',
       code: 'UNKNOWN_PHASE',
       message: '当前 change 的 phase 未知。',
-      suggestion: '检查 .comet.yaml 的 phase 字段，或重新运行对应阶段命令。',
+      suggestion: '检查 .zcw.yaml 的 phase 字段，或重新运行对应阶段命令。',
     });
   }
 
@@ -59,7 +57,7 @@ export function buildChangeRisks(input: ChangeRiskInput): DashboardRisk[] {
         level: 'warning',
         code: 'TASKS_INCOMPLETE',
         message: `仍有 ${remaining} 个任务未完成。`,
-        suggestion: '继续执行 /comet-build 完成剩余任务后再进入 verify。',
+        suggestion: '继续执行 /zcw-build 完成剩余任务后再进入 verify。',
       });
     }
   }
@@ -69,20 +67,19 @@ export function buildChangeRisks(input: ChangeRiskInput): DashboardRisk[] {
       level: 'error',
       code: 'VERIFY_FAILED',
       message: '最近一次 verify 失败。',
-      suggestion: '打开 verify-result.md 修复失败项后重新运行 /comet-verify。',
+      suggestion: '打开 verify-result.md 修复失败项后重新运行 /zcw-verify。',
     });
   } else if (input.status === 'active' && input.verify.result === 'pending') {
     risks.push({
       level: 'info',
       code: 'VERIFY_PENDING',
       message: '验证尚未执行或报告未生成。',
-      suggestion: '完成 build 任务后运行 /comet-verify。',
+      suggestion: '完成 build 任务后运行 /zcw-verify。',
     });
   }
 
   const missingArtifacts: string[] = [];
-  if (!input.artifacts.proposal) missingArtifacts.push('proposal.md');
-  if (!input.artifacts.design) missingArtifacts.push('design.md');
+  if (!input.artifacts.spec) missingArtifacts.push('spec.md');
   if (!input.artifacts.plan) missingArtifacts.push('plan.md');
   if (missingArtifacts.length > 0) {
     risks.push({
@@ -98,7 +95,7 @@ export function buildChangeRisks(input: ChangeRiskInput): DashboardRisk[] {
       level: 'info',
       code: 'ARCHIVE_METADATA_MISSING',
       message: '归档目录名不符合 YYYY-MM-DD-<name> 规范，无法推断 archivedAt。',
-      suggestion: '后续归档时遵守标准命名，或在 .comet.yaml 中记录 archived_at。',
+      suggestion: '后续归档时遵守标准命名，或在 .zcw.yaml 中记录 archived_at。',
     });
   }
 

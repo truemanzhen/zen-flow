@@ -4,12 +4,12 @@ import { checkbox, select } from '@inquirer/prompts';
 import { getBaseDir, type InstallScope } from '../core/detect.js';
 import { getPlatformSkillsDir } from '../core/platforms.js';
 import {
-  removeCometSkillsForPlatform,
-  removeCometRulesForPlatform,
-  removeCometHooksForPlatform,
+  removeZCWSkillsForPlatform,
+  removeZCWRulesForPlatform,
+  removeZCWHooksForPlatform,
   removeWorkingDirs,
 } from '../core/uninstall.js';
-import { detectInstalledCometTargets } from './update.js';
+import { detectInstalledZCWTargets } from './update.js';
 
 interface UninstallOptions {
   json?: boolean;
@@ -34,10 +34,10 @@ export async function uninstallCommand(
   const projectPath = path.resolve(targetPath);
   const log = options.json ? () => undefined : console.log;
 
-  log(`\n  Comet Uninstall\n`);
+  log(`\n  ZCW Uninstall\n`);
 
   // 1. Detect installed targets
-  const targets = await detectInstalledCometTargets(projectPath, {
+  const targets = await detectInstalledZCWTargets(projectPath, {
     scopes: options.scope ? [options.scope] : undefined,
   });
 
@@ -46,7 +46,7 @@ export async function uninstallCommand(
       console.log(JSON.stringify({ targets: [], results: [] }, null, 2));
       return;
     }
-    log('  No Comet installations found. Nothing to uninstall.\n');
+    log('  No ZCW installations found. Nothing to uninstall.\n');
     return;
   }
 
@@ -54,7 +54,7 @@ export async function uninstallCommand(
   const scopeLabel = (scope: InstallScope) =>
     scope === 'global' ? 'global' : `project (${projectPath})`;
 
-  log('  Found Comet installations on the following targets:\n');
+  log('  Found ZCW installations on the following targets:\n');
   for (const target of targets) {
     const skillsDir = getPlatformSkillsDir(target.platform, target.scope);
     const prefix = target.scope === 'global' ? '~/' : '';
@@ -67,7 +67,7 @@ export async function uninstallCommand(
   if (!options.force && !options.json) {
     if (targets.length === 1) {
       const confirmed = await select({
-        message: `Uninstall Comet from ${targets[0].platform.name} (${targets[0].scope})?`,
+        message: `Uninstall ZCW from ${targets[0].platform.name} (${targets[0].scope})?`,
         choices: [
           { name: 'Yes, uninstall', value: true },
           { name: 'No, cancel', value: false },
@@ -105,15 +105,15 @@ export async function uninstallCommand(
   for (const target of selectedTargets) {
     const baseDir = getBaseDir(target.scope, projectPath);
 
-    const skillsResult = await removeCometSkillsForPlatform(baseDir, target.platform, target.scope);
+    const skillsResult = await removeZCWSkillsForPlatform(baseDir, target.platform, target.scope);
     totalSkills += skillsResult.removed;
 
-    const rulesResult = await removeCometRulesForPlatform(baseDir, target.platform, target.scope);
+    const rulesResult = await removeZCWRulesForPlatform(baseDir, target.platform, target.scope);
     totalRules += rulesResult.removed;
 
     let hooksRemoved = 0;
     if (target.platform.supportsHooks) {
-      const hooksResult = await removeCometHooksForPlatform(baseDir, target.platform, target.scope);
+      const hooksResult = await removeZCWHooksForPlatform(baseDir, target.platform, target.scope);
       hooksRemoved = hooksResult.removed;
       totalHooks += hooksResult.removed;
     }

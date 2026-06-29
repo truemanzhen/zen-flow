@@ -10,7 +10,7 @@ export interface DashboardOptions {
 }
 
 /**
- * `comet dashboard` — launch the local read-only dashboard server.
+ * `zcw dashboard` — launch the local read-only dashboard server.
  *
  * Modes:
  *  - default: start the HTTP server, optionally open the browser, keep the
@@ -33,7 +33,7 @@ export async function dashboardCommand(
   const port = normalizePort(options.port);
   const handle = await startDashboardServer({ projectPath, port });
 
-  console.log(`Comet Dashboard running at ${handle.url}`);
+  console.log(`ZCW Dashboard running at ${handle.url}`);
   console.log('Press Ctrl+C to stop.');
 
   if (options.open !== false) {

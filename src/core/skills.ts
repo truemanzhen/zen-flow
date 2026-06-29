@@ -1,5 +1,5 @@
 import path from 'path';
-import { readFile, writeFile } from 'fs/promises';
+import { cp, readFile, writeFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 
 import { fileExists, readJson, copyFile, ensureDir } from '../utils/file-system.js';
@@ -29,17 +29,17 @@ type Manifest = {
 };
 
 const OPENCODE_COMMAND_HEADER = `---
-description: Run the {skillName} Comet workflow
+description: Run the {skillName} Zen Flow workflow
 ---
 `;
 
-const PI_COMMAND_EXTENSION_FILE = 'comet-commands.ts';
+const PI_COMMAND_EXTENSION_FILE = 'zcw-commands.ts';
 
 function getAssetsDir(): string {
   return path.resolve(__dirname, '..', '..', 'assets');
 }
 
-async function copyCometSkillsForPlatform(
+async function copyZCWSkillsForPlatform(
   baseDir: string,
   platform: Platform,
   overwrite: boolean,
@@ -120,10 +120,10 @@ function renderPiCommandExtension(skillNames: string[]): string {
 
 const commands = ${JSON.stringify(skillNames, null, 2)} as const;
 
-export default function registerCometCommands(pi: ExtensionAPI) {
+export default function registerZCWCommands(pi: ExtensionAPI) {
   for (const name of commands) {
     pi.registerCommand(name, {
-      description: \`Comet: /\${name}\`,
+      description: \`ZCW: /\${name}\`,
       handler: async (args) => {
         pi.sendUserMessage(args ? \`/skill:\${name} \${args}\` : \`/skill:\${name}\`);
       },
@@ -229,7 +229,7 @@ async function createOpenCodeCommands(
     }
     const skillBody = stripFrontmatter(await readFile(skillSourcePath, 'utf-8'));
     const content = `${OPENCODE_COMMAND_HEADER.replace('{skillName}', skillName)}
-Equivalent Comet skill: \`${skillName}\`
+Equivalent Zen Flow skill: \`${skillName}\`
 Command name: \`/${skillName}\`
 
 Use the invocation arguments below as the user input for this workflow:
@@ -259,14 +259,14 @@ async function getManifestSkills(): Promise<string[]> {
 }
 
 /**
- * Copy Comet rule files to a platform's rules directory.
+ * Copy ZCW rule files to a platform's rules directory.
  * Formats:
  *   'md' = plain markdown copy
  *   'mdc' = Cursor MDC with frontmatter
  *   'copilot' = GitHub Copilot .instructions.md with applyTo frontmatter
  * Skips platforms without rulesDir.
  */
-async function copyCometRulesForPlatform(
+async function copyZCWRulesForPlatform(
   baseDir: string,
   platform: Platform,
   overwrite: boolean,
@@ -333,7 +333,7 @@ function computeRuleDestPath(
     return path.join(rulesDestDir, ruleFileName.replace(/\.md$/, '.mdc'));
   }
   if (rulesFormat === 'copilot') {
-    // GitHub Copilot: comet-phase-guard.md → comet-phase-guard.instructions.md
+    // GitHub Copilot: zcw-phase-guard.md -> zcw-phase-guard.instructions.md
     return path.join(rulesDestDir, ruleFileName.replace(/\.md$/, '.instructions.md'));
   }
   return path.join(rulesDestDir, ruleFileName);
@@ -363,7 +363,7 @@ ${content}`;
 }
 
 /**
- * Install Comet hooks for platforms that support them.
+ * Install ZCW hooks for platforms that support them.
  * Supports multiple hook formats:
  *   'claude-code' — settings.local.json with PreToolUse array (Claude Code, Codex, Amazon Q)
  *   'qwen' — settings.json with PreToolUse/hooks array (Qwen Code)
@@ -373,7 +373,7 @@ ${content}`;
  *   'copilot' — hooks/*.json with preToolUse
  *   'kiro' — hooks/*.kiro.hook JSON files
  */
-async function installCometHooksForPlatform(
+async function installZCWHooksForPlatform(
   baseDir: string,
   platform: Platform,
   scope: InstallScope = 'project',
@@ -665,7 +665,7 @@ async function installWindsurfHooks(
 
 /**
  * GitHub Copilot format:
- * Writes to .github/hooks/comet-guard.json with preToolUse hooks config.
+ * Writes to .github/hooks/zcw-guard.json with preToolUse hooks config.
  */
 async function installCopilotHooks(
   platformBase: string,
@@ -673,7 +673,7 @@ async function installCopilotHooks(
   hooksConfig: Record<string, HookConfig>,
 ): Promise<{ installed: boolean; reason?: string }> {
   const hooksDir = path.join(platformBase, 'hooks');
-  const hookFilePath = path.join(hooksDir, 'comet-guard.json');
+  const hookFilePath = path.join(hooksDir, 'zcw-guard.json');
 
   const scriptEntries: Array<{ bash: string; powershell: string }> = [];
   for (const [scriptRelPath] of Object.entries(hooksConfig)) {
@@ -696,7 +696,7 @@ async function installCopilotHooks(
 
 /**
  * Kiro format:
- * Writes to .kiro/hooks/comet-phase-guard.kiro.hook as a JSON file.
+ * Writes to .kiro/hooks/zcw-phase-guard.kiro.hook as a JSON file.
  */
 async function installKiroHooks(
   platformBase: string,
@@ -735,17 +735,13 @@ async function installKiroHooks(
 }
 
 async function createWorkingDirs(projectPath: string): Promise<void> {
-  const dirs = [
-    path.join(projectPath, 'docs', 'superpowers', 'specs'),
-    path.join(projectPath, 'docs', 'superpowers', 'plans'),
-    path.join(projectPath, '.comet'),
-  ];
+  const dirs = [path.join(projectPath, 'specs'), path.join(projectPath, '.zcw')];
 
   for (const dir of dirs) {
     await ensureDir(dir);
   }
 
-  const configPath = path.join(projectPath, '.comet', 'config.yaml');
+  const configPath = path.join(projectPath, '.zcw', 'config.yaml');
   if (!(await fileExists(configPath))) {
     await writeFile(
       configPath,
@@ -763,10 +759,133 @@ async function createWorkingDirs(projectPath: string): Promise<void> {
   }
 }
 
+function renderZCWExtensionHook(
+  command: 'zcw.guard' | 'zcw.handoff',
+  prompt: string,
+  description: string,
+): string {
+  return [
+    '  - extension: zcw',
+    `    command: ${command}`,
+    '    enabled: true',
+    '    optional: false',
+    `    prompt: ${prompt}`,
+    `    description: ${description}`,
+    '    condition: null',
+  ].join('\n');
+}
+
+function ensureInstalledExtension(content: string, extensionId: string): string {
+  if (new RegExp(`^-[ \\t]+${extensionId}$`, 'mu').test(content)) return content;
+  if (/^installed:\s*$/mu.test(content)) {
+    return content.replace(/^installed:\s*$/mu, `installed:\n- ${extensionId}`);
+  }
+  return `installed:\n- ${extensionId}\n${content ? `\n${content}` : ''}`;
+}
+
+function ensureHookEntry(
+  content: string,
+  hookName: string,
+  command: 'zcw.guard' | 'zcw.handoff',
+  prompt: string,
+  description: string,
+): string {
+  const hookEntry = renderZCWExtensionHook(command, prompt, description);
+  const hookStart = new RegExp(`^ {2}${hookName}:\\s*$`, 'mu');
+  const nextHook = /\n {2}[A-Za-z0-9_]+:\s*\n/u;
+
+  if (!/^hooks:\s*$/mu.test(content)) {
+    content = `${content.replace(/\s*$/u, '')}\nhooks:\n`;
+  }
+
+  const startMatch = hookStart.exec(content);
+  if (!startMatch) {
+    return `${content.replace(/\s*$/u, '')}\n  ${hookName}:\n${hookEntry}\n`;
+  }
+
+  const blockStart = startMatch.index;
+  const afterStart = startMatch.index + startMatch[0].length;
+  const nextMatch = nextHook.exec(content.slice(afterStart));
+  const blockEnd = nextMatch ? afterStart + nextMatch.index : content.length;
+  const block = content.slice(blockStart, blockEnd);
+  if (block.includes('extension: zcw') && block.includes(`command: ${command}`)) return content;
+
+  return `${content.slice(0, afterStart)}\n${hookEntry}${content.slice(afterStart)}`;
+}
+
+function registerZCWExtension(content: string): string {
+  let next = ensureInstalledExtension(content, 'zcw');
+  next = ensureHookEntry(
+    next,
+    'before_clarify',
+    'zcw.guard',
+    'Check ZCW bridge guard before clarification?',
+    'Prevent Spec Kit contract edits while Superpowers execution is active',
+  );
+  next = ensureHookEntry(
+    next,
+    'before_plan',
+    'zcw.guard',
+    'Check ZCW bridge guard before planning?',
+    'Prevent Spec Kit contract edits while Superpowers execution is active',
+  );
+  next = ensureHookEntry(
+    next,
+    'before_tasks',
+    'zcw.guard',
+    'Check ZCW bridge guard before task generation?',
+    'Prevent Spec Kit contract edits while Superpowers execution is active',
+  );
+  next = ensureHookEntry(
+    next,
+    'before_implement',
+    'zcw.guard',
+    'Block speckit.implement if Superpowers owns execution?',
+    'Block speckit.implement for features handed off to Superpowers',
+  );
+  next = ensureHookEntry(
+    next,
+    'after_tasks',
+    'zcw.handoff',
+    'Create ZCW Superpowers handoff?',
+    'Create handoff state so Superpowers replaces speckit.implement',
+  );
+  return `${next.replace(/\s*$/u, '')}\n`;
+}
+
+async function installSpecKitExtension(
+  projectPath: string,
+  overwrite = true,
+): Promise<{ installed: boolean; reason?: string }> {
+  const assetsDir = getAssetsDir();
+  const sourceDir = path.join(assetsDir, 'spec-kit-extension');
+  if (!(await fileExists(sourceDir))) {
+    return { installed: false, reason: 'Spec Kit extension assets not found' };
+  }
+
+  const specifyDir = path.join(projectPath, '.specify');
+  if (!(await fileExists(specifyDir))) {
+    return { installed: false, reason: '.specify directory not found' };
+  }
+
+  const extensionDir = path.join(specifyDir, 'extensions', 'zcw');
+  await ensureDir(path.dirname(extensionDir));
+  await cp(sourceDir, extensionDir, { recursive: true, force: overwrite });
+
+  const extensionsPath = path.join(specifyDir, 'extensions.yml');
+  const existing = (await fileExists(extensionsPath))
+    ? await readFile(extensionsPath, 'utf-8')
+    : 'settings:\n  auto_execute_hooks: true\nhooks:\n';
+  await writeFile(extensionsPath, registerZCWExtension(existing), 'utf-8');
+
+  return { installed: true };
+}
+
 export {
-  copyCometSkillsForPlatform,
-  copyCometRulesForPlatform,
-  installCometHooksForPlatform,
+  copyZCWSkillsForPlatform,
+  copyZCWRulesForPlatform,
+  installZCWHooksForPlatform,
+  installSpecKitExtension,
   readManifest,
   getManifestSkills,
   createWorkingDirs,

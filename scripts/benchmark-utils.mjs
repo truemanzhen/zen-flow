@@ -14,7 +14,7 @@ export function safeRatio(numerator, denominator) {
 
 export function findBashCommand() {
   const candidates = [
-    process.env.COMET_BENCHMARK_BASH,
+    process.env.ZCW_BENCHMARK_BASH,
     'bash',
     ...(process.platform === 'win32'
       ? [

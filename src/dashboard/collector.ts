@@ -5,7 +5,7 @@ import { collectGitSnapshot } from './git.js';
 import { recommendNextAction } from './next-action.js';
 import { buildChangeRisks, buildProjectRisks } from './risk.js';
 import { parseTasksMarkdown } from './task-parser.js';
-import { readCometYaml, type CometYaml } from './yaml.js';
+import { readZCWYaml, type ZCWYaml } from './yaml.js';
 import { resolveVerify } from './verify-parser.js';
 import type {
   ArchiveInfo,
@@ -26,7 +26,7 @@ const VALID_PHASES: ReadonlySet<ChangePhase> = new Set([
   'unknown',
 ]);
 
-const CHANGES_DIR = path.join('openspec', 'changes');
+const CHANGES_DIR = 'specs';
 const ARCHIVE_SEGMENT = 'archive';
 const ARCHIVE_NAME_PATTERN = /^(\d{4}-\d{2}-\d{2})-(.+)$/u;
 
@@ -145,31 +145,28 @@ interface BuildChangeInput {
 }
 
 async function buildChangeItem(input: BuildChangeInput): Promise<ChangeDashboardItem> {
-  const yamlPath = path.join(input.dir, '.comet.yaml');
+  const yamlPath = path.join(input.dir, '.zcw.yaml');
   const tasksPath = path.join(input.dir, 'tasks.md');
-  const designPath = path.join(input.dir, 'design.md');
-  const proposalPath = path.join(input.dir, 'proposal.md');
+  const specPath = path.join(input.dir, 'spec.md');
   const planPath = path.join(input.dir, 'plan.md');
 
-  const yaml: CometYaml = (await readCometYaml(yamlPath)) ?? {};
+  const yaml: ZCWYaml = (await readZCWYaml(yamlPath)) ?? {};
 
   const tasks = await readTasks(tasksPath);
   const verify = await resolveVerify({ changeDir: input.dir, yaml });
 
-  const [proposal, design, hasTasks, plan] = await Promise.all([
-    fileExists(proposalPath),
-    fileExists(designPath),
+  const [spec, hasTasks, plan] = await Promise.all([
+    fileExists(specPath),
     fileExists(tasksPath),
     fileExists(planPath),
   ]);
 
   const artifacts: ArtifactsSummary = {
-    proposal,
-    design,
+    spec,
     tasks: hasTasks,
     plan,
     verifyReport: verify.reportExists,
-    cometYaml: await fileExists(yamlPath),
+    zcwYaml: await fileExists(yamlPath),
   };
 
   const phase = parsePhase(yaml.phase);
@@ -185,7 +182,7 @@ async function buildChangeItem(input: BuildChangeInput): Promise<ChangeDashboard
   const risks: DashboardRisk[] = buildChangeRisks({
     status: input.status,
     phase,
-    hasCometYaml: artifacts.cometYaml,
+    hasZCWYaml: artifacts.zcwYaml,
     tasks,
     verify,
     artifacts,

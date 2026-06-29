@@ -1,7 +1,7 @@
 /**
- * Lightweight `.comet.yaml` parser.
+ * Lightweight `.zcw.yaml` parser.
  *
- * Mirrors the format produced by `assets/skills/comet/scripts/comet-state.sh`
+ * Mirrors the format produced by `assets/skills/zcw/scripts/zcw-state.sh`
  * (a single flat map of `key: value` lines). This is intentionally a subset
  * of YAML — no nested keys, no anchors — and matches the parser already used
  * by `src/commands/status.ts`. It is reproduced here, rather than reused, to
@@ -11,16 +11,16 @@
 import { promises as fs } from 'fs';
 import { fileExists } from '../utils/file-system.js';
 
-export type CometYaml = Record<string, string>;
+export type ZCWYaml = Record<string, string>;
 
-export async function readCometYaml(yamlPath: string): Promise<CometYaml | null> {
+export async function readZCWYaml(yamlPath: string): Promise<ZCWYaml | null> {
   if (!(await fileExists(yamlPath))) return null;
   const raw = await fs.readFile(yamlPath, 'utf-8');
-  return parseCometYaml(raw);
+  return parseZCWYaml(raw);
 }
 
-export function parseCometYaml(raw: string): CometYaml {
-  const out: CometYaml = {};
+export function parseZCWYaml(raw: string): ZCWYaml {
+  const out: ZCWYaml = {};
   for (const line of raw.split(/\r?\n/u)) {
     const stripped = stripInlineComment(line);
     const match = stripped.match(/^(\w[\w_]*):\s*(.*)$/u);

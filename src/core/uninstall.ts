@@ -12,10 +12,10 @@ interface RemovalResult {
 }
 
 /**
- * Remove Comet skill files for a specific platform.
+ * Remove ZCW skill files for a specific platform.
  * Reads the manifest to determine which skill paths to remove.
  */
-async function removeCometSkillsForPlatform(
+async function removeZCWSkillsForPlatform(
   baseDir: string,
   platform: Platform,
   scope: InstallScope = 'project',
@@ -58,7 +58,11 @@ async function removeCometSkillsForPlatform(
 
   if (platform.id === 'pi') {
     const extensionsDir = path.join(baseDir, skillsDir, 'extensions');
-    if (await removeFile(path.join(extensionsDir, 'comet-commands.ts'))) {
+    if (await removeFile(path.join(extensionsDir, 'zcw-commands.ts'))) {
+      removed++;
+    }
+    // Backward compatibility for installations created before the zcw prefix rename.
+    if (await removeFile(path.join(extensionsDir, 'zcw-commands.ts'))) {
       removed++;
     }
     if (await isDirEmpty(extensionsDir)) {
@@ -66,13 +70,13 @@ async function removeCometSkillsForPlatform(
     }
   }
 
-  // Clean up empty subdirectories and then empty comet skill directories
+  // Clean up empty subdirectories and then empty zcw skill directories
   // Collect all unique parent directories of removed files (bottom-up cleanup)
   const parentDirs = new Set<string>();
   for (const targetSkillsDir of uniqueSkillsDirs) {
     for (const skillRelPath of manifest.skills) {
       const parts = skillRelPath.split('/');
-      if (parts[0].startsWith('comet')) {
+      if (parts[0].startsWith('zcw')) {
         // Add all intermediate directories for nested paths
         let current = path.join(baseDir, targetSkillsDir, 'skills', parts[0]);
         parentDirs.add(current);
@@ -98,10 +102,10 @@ async function removeCometSkillsForPlatform(
 }
 
 /**
- * Remove Comet rule files for a specific platform.
+ * Remove ZCW rule files for a specific platform.
  * Reuses computeRuleDestPath for consistent path computation.
  */
-async function removeCometRulesForPlatform(
+async function removeZCWRulesForPlatform(
   baseDir: string,
   platform: Platform,
   scope: InstallScope = 'project',
@@ -148,10 +152,10 @@ async function removeCometRulesForPlatform(
 }
 
 /**
- * Remove Comet hooks for platforms that support them.
- * Preserves non-Comet hooks in configuration files.
+ * Remove ZCW hooks for platforms that support them.
+ * Preserves non-ZCW hooks in configuration files.
  */
-async function removeCometHooksForPlatform(
+async function removeZCWHooksForPlatform(
   baseDir: string,
   platform: Platform,
   scope: InstallScope = 'project',
@@ -398,8 +402,7 @@ async function removeWindsurfHooks(
   }
 
   const existingPreWrite = existingHooks.pre_write_code as
-    | Array<Record<string, unknown>>
-    | undefined;
+    Array<Record<string, unknown>> | undefined;
   if (!existingPreWrite || !Array.isArray(existingPreWrite)) {
     return { removed: 0, failed: 0 };
   }
@@ -429,13 +432,13 @@ async function removeWindsurfHooks(
 }
 
 /**
- * GitHub Copilot: hooks/comet-guard.json file (delete the entire file).
+ * GitHub Copilot: hooks/zcw-guard.json file (delete the entire file).
  */
 async function removeCopilotHooks(
   platformBase: string,
   _scriptRelPaths: string[],
 ): Promise<RemovalResult> {
-  const hookFilePath = path.join(platformBase, 'hooks', 'comet-guard.json');
+  const hookFilePath = path.join(platformBase, 'hooks', 'zcw-guard.json');
   const removed = (await removeFile(hookFilePath)) ? 1 : 0;
 
   // Clean up empty hooks directory
@@ -448,7 +451,7 @@ async function removeCopilotHooks(
 }
 
 /**
- * Kiro: hooks/*.kiro.hook files matching comet patterns.
+ * Kiro: hooks/*.kiro.hook files matching zcw patterns.
  */
 async function removeKiroHooks(
   platformBase: string,
@@ -464,14 +467,14 @@ async function removeKiroHooks(
 
   for (const entry of entries) {
     if (!entry.endsWith('.kiro.hook')) continue;
-    // Match files that correspond to comet scripts
+    // Match files that correspond to zcw scripts
     const baseName = entry.replace('.kiro.hook', '');
-    const isCometHook = scriptRelPaths.some((scriptPath) => {
+    const isZCWHook = scriptRelPaths.some((scriptPath) => {
       const scriptBase = path.basename(scriptPath).replace('.sh', '');
       return scriptBase === baseName;
     });
 
-    if (isCometHook) {
+    if (isZCWHook) {
       const hookPath = path.join(hooksDir, entry);
       if (await removeFile(hookPath)) {
         removed++;
@@ -488,48 +491,41 @@ async function removeKiroHooks(
 }
 
 /**
- * Remove Comet working directories from a project.
+ * Remove ZCW working directories from a project.
  * Only applies to project scope.
  */
 async function removeWorkingDirs(projectPath: string): Promise<RemovalResult> {
   let removed = 0;
 
-  // Remove .comet/ directory
-  const cometDir = path.join(projectPath, '.comet');
-  if (await removeDir(cometDir)) {
+  const removeIfEmpty = async (dir: string) => {
+    if (await isDirEmpty(dir)) {
+      await removeDir(dir);
+      removed++;
+    }
+  };
+
+  // Remove .zcw/ directory
+  const zcwDir = path.join(projectPath, '.zcw');
+  if (await removeDir(zcwDir)) {
     removed++;
   }
 
-  // Remove docs/superpowers/specs/ if empty
-  const specsDir = path.join(projectPath, 'docs', 'superpowers', 'specs');
-  if (await isDirEmpty(specsDir)) {
-    await removeDir(specsDir);
-  }
+  // Remove specs/ if empty
+  await removeIfEmpty(path.join(projectPath, 'specs'));
 
-  // Remove docs/superpowers/plans/ if empty
-  const plansDir = path.join(projectPath, 'docs', 'superpowers', 'plans');
-  if (await isDirEmpty(plansDir)) {
-    await removeDir(plansDir);
-  }
-
-  // Remove docs/superpowers/ if empty
-  const superpowersDir = path.join(projectPath, 'docs', 'superpowers');
-  if (await isDirEmpty(superpowersDir)) {
-    await removeDir(superpowersDir);
-  }
-
-  // Remove docs/ if empty
-  const docsDir = path.join(projectPath, 'docs');
-  if (await isDirEmpty(docsDir)) {
-    await removeDir(docsDir);
-  }
+  // Remove legacy Superpowers working directories if they are empty.
+  await removeIfEmpty(path.join(projectPath, 'docs', 'superpowers', 'specs'));
+  await removeIfEmpty(path.join(projectPath, 'docs', 'superpowers', 'plans'));
+  await removeIfEmpty(path.join(projectPath, 'docs', 'superpowers', 'reports'));
+  await removeIfEmpty(path.join(projectPath, 'docs', 'superpowers'));
+  await removeIfEmpty(path.join(projectPath, 'docs'));
 
   return { removed, failed: 0 };
 }
 
 export {
-  removeCometSkillsForPlatform,
-  removeCometRulesForPlatform,
-  removeCometHooksForPlatform,
+  removeZCWSkillsForPlatform,
+  removeZCWRulesForPlatform,
+  removeZCWHooksForPlatform,
   removeWorkingDirs,
 };

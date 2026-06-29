@@ -12,10 +12,10 @@ function git(repo: string, args: string[]): string {
 }
 
 async function makeRepo(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-git-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-git-'));
   git(dir, ['init', '-q', '-b', 'main']);
-  git(dir, ['config', 'user.email', 'comet@test.local']);
-  git(dir, ['config', 'user.name', 'Comet Test']);
+  git(dir, ['config', 'user.email', 'zcw@test.local']);
+  git(dir, ['config', 'user.name', 'ZCW Test']);
   git(dir, ['config', 'commit.gpgsign', 'false']);
   return dir;
 }
@@ -32,7 +32,7 @@ describe('collectGitSnapshot', () => {
   });
 
   it('returns null fields and empty lists for a non-git directory', async () => {
-    const notRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-notgit-'));
+    const notRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-notgit-'));
     try {
       const snap = await collectGitSnapshot(notRepo);
       expect(snap).toEqual({

@@ -22,7 +22,7 @@ vi.mock('../../src/commands/platform-select-prompt.js', () => ({
 
 vi.mock('../../src/core/version.js', () => ({
   printVersionInfo: vi.fn(async (log: (message: string) => void) => {
-    log('  Comet vtest');
+    log('  ZCW vtest');
     return {
       currentVersion: 'test',
       latestVersion: null,
@@ -50,9 +50,9 @@ function mockExternalSuccess() {
       cmdArgs.includes('claude-code')
     ) {
       const cwd = (opts as { cwd?: string } | undefined)?.cwd ?? os.tmpdir();
-      const stagedSkillsDir = path.join(cwd, '.claude', 'skills', 'comet');
+      const stagedSkillsDir = path.join(cwd, '.claude', 'skills', 'zcw');
       mkdirSync(stagedSkillsDir, { recursive: true });
-      writeFileSync(path.join(stagedSkillsDir, 'SKILL.md'), '# Lingma Comet\n');
+      writeFileSync(path.join(stagedSkillsDir, 'SKILL.md'), '# Lingma ZCW\n');
       return Buffer.from('installed');
     }
 
@@ -97,13 +97,13 @@ async function captureTextOutput(fn: () => Promise<void>): Promise<string> {
   return [...lines, ...errors].join('\n');
 }
 
-describe('comet init E2E', () => {
+describe('zcw init E2E', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
     tmpDir = path.join(
       os.tmpdir(),
-      `comet-init-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `zcw-init-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     await fs.mkdir(tmpDir, { recursive: true });
     vi.resetAllMocks();
@@ -114,7 +114,7 @@ describe('comet init E2E', () => {
     await fs.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  it('installs Comet skills at project scope with --yes --json', async () => {
+  it('installs ZCW skills at project scope with --yes --json', async () => {
     mockExternalSuccess();
     await fs.mkdir(path.join(tmpDir, '.claude'), { recursive: true });
 
@@ -127,10 +127,10 @@ describe('comet init E2E', () => {
     expect(result.selectedPlatforms).toContain('claude');
     expect(result.workingDirsCreated).toBe(true);
 
-    const claudeResult = (result.results as { platform: string; comet: string }[]).find(
+    const claudeResult = (result.results as { platform: string; zcw: string }[]).find(
       (r) => r.platform === 'claude',
     );
-    expect(claudeResult?.comet).toBe('installed');
+    expect(claudeResult?.zcw).toBe('installed');
 
     const manifest = await readManifest();
     for (const skillPath of manifest.skills) {
@@ -142,7 +142,7 @@ describe('comet init E2E', () => {
     await expect(fs.stat(path.join(tmpDir, 'docs', 'superpowers', 'plans'))).resolves.toBeDefined();
   }, 20_000);
 
-  it('installs Comet skills at global scope', async () => {
+  it('installs ZCW skills at global scope', async () => {
     mockExternalSuccess();
 
     await fs.mkdir(path.join(tmpDir, '.claude'), { recursive: true });
@@ -168,16 +168,16 @@ describe('comet init E2E', () => {
     await expect(fs.stat(path.join(tmpDir, 'docs', 'superpowers', 'specs'))).rejects.toThrow();
   }, 20_000);
 
-  it('skips already-installed Comet skills with --yes', async () => {
+  it('skips already-installed ZCW skills with --yes', async () => {
     mockExternalSuccess();
     await fs.mkdir(path.join(tmpDir, '.claude'), { recursive: true });
 
     const { initCommand } = await import('../../src/commands/init.js');
     const result1 = await captureJsonOutput(() => initCommand(tmpDir, { yes: true, json: true }));
-    const claude1 = (result1.results as { platform: string; comet: string }[]).find(
+    const claude1 = (result1.results as { platform: string; zcw: string }[]).find(
       (r) => r.platform === 'claude',
     );
-    expect(claude1?.comet).toBe('installed');
+    expect(claude1?.zcw).toBe('installed');
 
     vi.resetModules();
     vi.resetAllMocks();
@@ -185,13 +185,13 @@ describe('comet init E2E', () => {
 
     const { initCommand: init2 } = await import('../../src/commands/init.js');
     const result2 = await captureJsonOutput(() => init2(tmpDir, { yes: true, json: true }));
-    const claude2 = (result2.results as { platform: string; comet: string }[]).find(
+    const claude2 = (result2.results as { platform: string; zcw: string }[]).find(
       (r) => r.platform === 'claude',
     );
-    expect(claude2?.comet).toBe('skipped');
+    expect(claude2?.zcw).toBe('skipped');
   }, 20_000);
 
-  it('overwrites existing Comet skills with --overwrite', async () => {
+  it('overwrites existing ZCW skills with --overwrite', async () => {
     mockExternalSuccess();
     await fs.mkdir(path.join(tmpDir, '.claude'), { recursive: true });
 
@@ -206,10 +206,10 @@ describe('comet init E2E', () => {
     const result = await captureJsonOutput(() =>
       init2(tmpDir, { yes: true, overwrite: true, json: true }),
     );
-    const claude = (result.results as { platform: string; comet: string }[]).find(
+    const claude = (result.results as { platform: string; zcw: string }[]).find(
       (r) => r.platform === 'claude',
     );
-    expect(claude?.comet).toBe('installed');
+    expect(claude?.zcw).toBe('installed');
   }, 20_000);
 
   it('installs all platforms from clean directory with --yes', async () => {
@@ -265,17 +265,17 @@ describe('comet init E2E', () => {
       }
 
       await expect(
-        fs.access(path.join(tmpDir, '.opencode', 'commands', 'comet-open.md')),
+        fs.access(path.join(tmpDir, '.opencode', 'commands', 'zcw-open.md')),
       ).resolves.toBeUndefined();
       await expect(
-        fs.access(path.join(tmpDir, '.pi', 'extensions', 'comet-commands.ts')),
+        fs.access(path.join(tmpDir, '.pi', 'extensions', 'zcw-commands.ts')),
       ).resolves.toBeUndefined();
     } finally {
       homedirSpy.mockRestore();
     }
   }, 20_000);
 
-  it('installs Antigravity Comet skills to the Gemini global skills directory', async () => {
+  it('installs Antigravity ZCW skills to the Gemini global skills directory', async () => {
     mockExternalSuccess();
 
     await fs.mkdir(path.join(tmpDir, '.agents'), { recursive: true });
@@ -298,7 +298,7 @@ describe('comet init E2E', () => {
     }
   }, 20_000);
 
-  it('installs OpenCode global Comet skills and commands to the OpenCode config directory', async () => {
+  it('installs OpenCode global ZCW skills and commands to the OpenCode config directory', async () => {
     mockExternalSuccess();
 
     await fs.mkdir(path.join(tmpDir, '.opencode'), { recursive: true });
@@ -321,13 +321,13 @@ describe('comet init E2E', () => {
     }
 
     await expect(
-      fs.access(path.join(fakeHome, '.config', 'opencode', 'commands', 'comet.md')),
+      fs.access(path.join(fakeHome, '.config', 'opencode', 'commands', 'zcw.md')),
     ).resolves.toBeUndefined();
     await expect(
-      fs.access(path.join(fakeHome, '.config', 'opencode', 'commands', 'comet-open.md')),
+      fs.access(path.join(fakeHome, '.config', 'opencode', 'commands', 'zcw-open.md')),
     ).resolves.toBeUndefined();
     await expect(
-      fs.access(path.join(fakeHome, '.opencode', 'skills', 'comet', 'SKILL.md')),
+      fs.access(path.join(fakeHome, '.opencode', 'skills', 'zcw', 'SKILL.md')),
     ).rejects.toThrow();
   }, 20_000);
 
@@ -384,20 +384,20 @@ describe('comet init E2E', () => {
     expect(result.selectedPlatforms).toEqual(['pi']);
 
     await expect(
-      fs.access(path.join(fakeHome, '.pi', 'agent', 'skills', 'comet', 'SKILL.md')),
+      fs.access(path.join(fakeHome, '.pi', 'agent', 'skills', 'zcw', 'SKILL.md')),
     ).resolves.toBeUndefined();
     await expect(
-      fs.access(path.join(fakeHome, '.pi', 'agent', 'extensions', 'comet-commands.ts')),
+      fs.access(path.join(fakeHome, '.pi', 'agent', 'extensions', 'zcw-commands.ts')),
     ).resolves.toBeUndefined();
     await expect(
       fs.readFile(path.join(fakeHome, '.pi', 'agent', 'settings.json'), 'utf-8'),
     ).resolves.toContain('"enableSkillCommands": true');
     await expect(
-      fs.access(path.join(fakeHome, '.pi', 'skills', 'comet', 'SKILL.md')),
+      fs.access(path.join(fakeHome, '.pi', 'skills', 'zcw', 'SKILL.md')),
     ).rejects.toThrow();
   }, 20_000);
 
-  it('installs Lingma global Comet skills to the user Lingma skills directory', async () => {
+  it('installs Lingma global ZCW skills to the user Lingma skills directory', async () => {
     mockExternalSuccess();
 
     await fs.mkdir(path.join(tmpDir, '.lingma'), { recursive: true });
@@ -420,11 +420,11 @@ describe('comet init E2E', () => {
     }
 
     await expect(
-      fs.access(path.join(tmpDir, '.lingma', 'skills', 'comet', 'SKILL.md')),
+      fs.access(path.join(tmpDir, '.lingma', 'skills', 'zcw', 'SKILL.md')),
     ).rejects.toThrow();
   }, 20_000);
 
-  it('installs Kimi Code global Comet skills to the user Kimi Code skills directory', async () => {
+  it('installs Kimi Code global ZCW skills to the user Kimi Code skills directory', async () => {
     mockExternalSuccess();
 
     await fs.mkdir(path.join(tmpDir, '.kimi-code'), { recursive: true });
@@ -447,7 +447,7 @@ describe('comet init E2E', () => {
     }
 
     await expect(
-      fs.access(path.join(tmpDir, '.kimi-code', 'skills', 'comet', 'SKILL.md')),
+      fs.access(path.join(tmpDir, '.kimi-code', 'skills', 'zcw', 'SKILL.md')),
     ).rejects.toThrow();
   }, 20_000);
 

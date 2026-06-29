@@ -4,7 +4,7 @@ import { fileExists } from '../utils/file-system.js';
 import type { VerifyResult, VerifySummary } from './types.js';
 
 const VALID_RESULTS: ReadonlySet<VerifyResult> = new Set(['pending', 'pass', 'fail', 'unknown']);
-const DEFAULT_REPORT_RELATIVE = '.comet/verify-result.md';
+const DEFAULT_REPORT_RELATIVE = '.zcw/verify-result.md';
 const SUMMARY_LINE_BUDGET = 6;
 const SUMMARY_CHAR_BUDGET = 480;
 
@@ -17,7 +17,7 @@ export interface VerifyContext {
  * Resolve a change's verify state in this order:
  *  1. `yaml.verify_result` (or `verifyResult`) if it parses to a known value.
  *  2. Presence of a verify report: explicit `verification_report` path first,
- *     falling back to `.comet/verify-result.md`.
+ *     falling back to `.zcw/verify-result.md`.
  *  3. Heuristic: if a report exists but the yaml is silent, assume `fail` —
  *     the report wouldn't usually exist for a passing run that hasn't been
  *     recorded in the yaml.
@@ -53,7 +53,7 @@ export async function resolveVerify(ctx: VerifyContext): Promise<VerifySummary> 
 /**
  * Resolve `candidate` against `root` only if the resolved path stays inside
  * `root`. Returns `null` when the candidate is absolute or escapes via `..`,
- * so callers can fall back to a safe default. A malicious `.comet.yaml` must
+ * so callers can fall back to a safe default. A malicious `.zcw.yaml` must
  * not be able to point the dashboard at arbitrary files on disk.
  */
 function safeJoin(root: string, candidate: string): string | null {

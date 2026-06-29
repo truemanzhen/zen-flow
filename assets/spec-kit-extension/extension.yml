@@ -1,0 +1,60 @@
+schema_version: "1.0"
+
+extension:
+  id: zcw
+  name: "ZCW Spec Kit Superpowers Bridge"
+  version: "0.1.0"
+  description: "Bridge Spec Kit tasks into ZCW/Superpowers execution discipline."
+  author: "zcw"
+  license: MIT
+  category: process
+  effect: read-write
+
+requires:
+  speckit_version: ">=0.8.10"
+  tools:
+    - name: "zcw"
+      required: true
+
+provides:
+  commands:
+    - name: zcw.handoff
+      file: commands/zcw.handoff.md
+      description: "Create or update the ZCW Superpowers handoff state"
+    - name: zcw.guard
+      file: commands/zcw.guard.md
+      description: "Guard Spec Kit and Superpowers ownership boundaries"
+    - name: zcw.execute
+      file: commands/zcw.execute.md
+      description: "Execute Spec Kit tasks through ZCW and Superpowers"
+      aliases:
+        - zcw
+
+hooks:
+  before_clarify:
+    command: zcw.guard
+    optional: false
+    description: "Prevent Spec Kit contract edits while Superpowers execution is active"
+  before_plan:
+    command: zcw.guard
+    optional: false
+    description: "Prevent Spec Kit contract edits while Superpowers execution is active"
+  before_tasks:
+    command: zcw.guard
+    optional: false
+    description: "Prevent Spec Kit contract edits while Superpowers execution is active"
+  before_implement:
+    command: zcw.guard
+    optional: false
+    description: "Block speckit.implement for features handed off to Superpowers"
+  after_tasks:
+    command: zcw.handoff
+    optional: false
+    description: "Create the ZCW Superpowers handoff after Spec Kit task generation"
+
+tags:
+  - zcw
+  - spec-kit
+  - superpowers
+  - bridge
+  - tdd

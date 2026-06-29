@@ -1,5 +1,5 @@
 name: 🚀 Feature Request
-description: Suggest an improvement to Comet.
+description: Suggest an improvement to ZCW.
 title: 'feat: '
 labels: ['enhancement', 'needs-triage']
 body:
@@ -15,14 +15,14 @@ body:
     attributes:
       label: 🧭 Problem
       description: What workflow problem should this solve?
-      placeholder: 'When using Comet to ..., I need ...'
+      placeholder: 'When using ZCW to ..., I need ...'
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: ✨ Proposed solution
-      description: Describe the behavior you want Comet to provide.
+      description: Describe the behavior you want ZCW to provide.
     validations:
       required: true
 
@@ -44,7 +44,7 @@ body:
   - type: dropdown
     attributes:
       label: 🪐 Workflow phase
-      description: If this affects a Comet phase, choose the closest one.
+      description: If this affects a ZCW phase, choose the closest one.
       options:
         - Not phase-specific
         - Open

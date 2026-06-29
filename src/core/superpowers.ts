@@ -107,7 +107,7 @@ async function installSuperpowersForLingma(
     return 'failed';
   }
 
-  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'comet-lingma-superpowers-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'zcw-lingma-superpowers-'));
   try {
     const stageCommand = buildLingmaSuperpowersStageCommand();
     execFileSync(stageCommand.command, stageCommand.args, {

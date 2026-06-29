@@ -8,7 +8,7 @@ describe('status command', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = path.join(os.tmpdir(), `comet-status-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tmpDir = path.join(os.tmpdir(), `zcw-status-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await fs.mkdir(tmpDir, { recursive: true });
   });
 
@@ -17,10 +17,10 @@ describe('status command', () => {
   });
 
   it('prints the next command for active changes', async () => {
-    const changeDir = path.join(tmpDir, 'openspec', 'changes', 'next-build');
+    const changeDir = path.join(tmpDir, 'specs', 'next-build');
     await fs.mkdir(changeDir, { recursive: true });
     await fs.writeFile(
-      path.join(changeDir, '.comet.yaml'),
+      path.join(changeDir, '.zcw.yaml'),
       [
         'workflow: full',
         'phase: build',
@@ -28,8 +28,8 @@ describe('status command', () => {
         'isolation: branch',
         'verify_mode: light',
         'verify_result: pending',
-        'design_doc: docs/superpowers/specs/next-build.md',
-        'plan: docs/superpowers/plans/next-build.md',
+        'design_doc: specs/next-build/plan.md',
+        'plan: specs/next-build/tasks.md',
         'archived: false',
         '',
       ].join('\n'),
@@ -45,15 +45,15 @@ describe('status command', () => {
       log.mockRestore();
     }
 
-    expect(output).toContain('next: /comet-build');
+    expect(output).toContain('next: /zcw-build');
     expect(output).toContain('[1/2 tasks]');
   });
 
   it('includes next command in JSON output', async () => {
-    const changeDir = path.join(tmpDir, 'openspec', 'changes', 'next-verify');
+    const changeDir = path.join(tmpDir, 'specs', 'next-verify');
     await fs.mkdir(changeDir, { recursive: true });
     await fs.writeFile(
-      path.join(changeDir, '.comet.yaml'),
+      path.join(changeDir, '.zcw.yaml'),
       ['workflow: full', 'phase: verify', 'archived: false', ''].join('\n'),
     );
 
@@ -66,6 +66,6 @@ describe('status command', () => {
       log.mockRestore();
     }
 
-    expect(JSON.parse(json).changes[0].nextCommand).toBe('/comet-verify');
+    expect(JSON.parse(json).changes[0].nextCommand).toBe('/zcw-verify');
   });
 });

@@ -35,7 +35,7 @@ function usage() {
 
 function parseArgs(argv) {
   const options = {
-    workspace: path.join(REPO_ROOT, '.comet', 'benchmark-runs'),
+    workspace: path.join(REPO_ROOT, '.zcw', 'benchmark-runs'),
     repeats: 1,
     codexCommand: 'codex',
     model: null,
@@ -197,14 +197,14 @@ function contextSavings(byMode) {
 
 export async function runBenchmark(options = {}) {
   const config = {
-    workspace: path.resolve(options.workspace ?? path.join(REPO_ROOT, '.comet', 'benchmark-runs')),
+    workspace: path.resolve(options.workspace ?? path.join(REPO_ROOT, '.zcw', 'benchmark-runs')),
     repeats: options.repeats ?? 1,
     codexCommand: options.codexCommand ?? 'codex',
     model: options.model ?? null,
     dryRun: Boolean(options.dryRun),
     tiers: options.tiers ?? TIERS,
   };
-  const root = path.join(config.workspace, '.comet', 'benchmark', 'context-compression');
+  const root = path.join(config.workspace, '.zcw', 'benchmark', 'context-compression');
   await fs.mkdir(root, { recursive: true });
 
   const results = [];
@@ -266,10 +266,10 @@ async function createFixture(root, mode, tier = 'small') {
   const changeDir = path.join(root, 'openspec', 'changes', CHANGE_NAME);
   await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   await fs.mkdir(path.join(changeDir, 'specs', 'note-board'), { recursive: true });
-  await fs.mkdir(path.join(root, '.comet'), { recursive: true });
-  await fs.writeFile(path.join(root, '.comet', 'config.yaml'), `context_compression: ${mode}\n`);
+  await fs.mkdir(path.join(root, '.zcw'), { recursive: true });
+  await fs.writeFile(path.join(root, '.zcw', 'config.yaml'), `context_compression: ${mode}\n`);
   await fs.writeFile(
-    path.join(changeDir, '.comet.yaml'),
+    path.join(changeDir, '.zcw.yaml'),
     [
       'workflow: full',
       'phase: design',
@@ -375,9 +375,9 @@ function buildSpec(count) {
 async function generateHandoff(cwd) {
   const bash = findBashCommand();
   if (!bash) {
-    throw new Error('Bash or Git Bash is required to generate Comet handoff context');
+    throw new Error('Bash or Git Bash is required to generate ZCW handoff context');
   }
-  const script = path.join(REPO_ROOT, 'assets', 'skills', 'comet', 'scripts', 'comet-handoff.sh');
+  const script = path.join(REPO_ROOT, 'assets', 'skills', 'zcw', 'scripts', 'zcw-handoff.sh');
   await spawnCapture(bash.command, [toBashPath(script, bash.pathStyle), CHANGE_NAME, 'design', '--write'], {
     cwd,
   });
@@ -391,7 +391,7 @@ async function writeSyntheticHandoff(root, mode, tier = 'small') {
     'openspec',
     'changes',
     CHANGE_NAME,
-    '.comet',
+    '.zcw',
     'handoff',
   );
   await fs.mkdir(handoffDir, { recursive: true });
@@ -401,7 +401,7 @@ async function writeSyntheticHandoff(root, mode, tier = 'small') {
   await fs.writeFile(
     contextPath,
     [
-      mode === 'beta' ? '# Comet Spec Context' : '# Comet Design Handoff',
+      mode === 'beta' ? '# ZCW Spec Context' : '# ZCW Design Handoff',
       '',
       `- Change: ${CHANGE_NAME}`,
       '- Phase: design',
@@ -444,7 +444,7 @@ async function measureContext(root, mode) {
     'openspec',
     'changes',
     CHANGE_NAME,
-    '.comet',
+    '.zcw',
     'handoff',
     contextName,
   );
@@ -480,8 +480,8 @@ function dryRunResult(mode, tier = 'small', context = { approxTokens: 0 }) {
 async function runCodexMode({ codexCommand, model, cwd, mode }) {
   const contextFile =
     mode === 'beta'
-      ? `openspec/changes/${CHANGE_NAME}/.comet/handoff/spec-context.md`
-      : `openspec/changes/${CHANGE_NAME}/.comet/handoff/design-context.md`;
+      ? `openspec/changes/${CHANGE_NAME}/.zcw/handoff/spec-context.md`
+      : `openspec/changes/${CHANGE_NAME}/.zcw/handoff/design-context.md`;
   const contextText = await fs.readFile(path.join(cwd, contextFile), 'utf-8');
   const prompt = buildPrompt(mode, contextFile, contextText);
   const args = buildCodexArgs({ cwd, model });
@@ -522,10 +522,10 @@ export function buildCodexArgs({ cwd, model = null }) {
 
 function buildPrompt(mode, contextFile, contextText) {
   return [
-    'You are running a local Comet context-compression benchmark.',
+    'You are running a local ZCW context-compression benchmark.',
     `Mode: ${mode}`,
     `Context source: ${contextFile}`,
-    'Use only the inline Comet handoff context below. Do not call tools and do not inspect files.',
+    'Use only the inline ZCW handoff context below. Do not call tools and do not inspect files.',
     'Evaluate whether an implementation agent could complete the note-board task from this context.',
     'Return only compact JSON with this exact shape:',
     '{"completed":true,"specFacts":8,"driftedFacts":0,"acceptanceCriteriaTotal":4,"acceptanceCriteriaMet":4}',
@@ -536,15 +536,15 @@ function buildPrompt(mode, contextFile, contextText) {
     '- acceptanceCriteriaTotal: number of acceptance scenarios in the spec.',
     '- acceptanceCriteriaMet: number of scenarios preserved clearly enough in the context for implementation.',
     '',
-    '<comet_handoff_context>',
+    '<zcw_handoff_context>',
     contextText,
-    '</comet_handoff_context>',
+    '</zcw_handoff_context>',
   ].join('\n');
 }
 
 function renderMarkdownReport(report) {
   const lines = [
-    '# Comet 上下文压缩 Benchmark 报告',
+    '# ZCW 上下文压缩 Benchmark 报告',
     '',
     `- 生成时间: ${report.generatedAt}`,
     `- Dry run: ${report.dryRun ? '是' : '否'}`,

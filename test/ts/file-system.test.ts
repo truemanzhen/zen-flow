@@ -17,7 +17,7 @@ describe('file-system utils', () => {
   beforeEach(async () => {
     tmpDir = path.join(
       os.tmpdir(),
-      `comet-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `zcw-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     await fs.mkdir(tmpDir, { recursive: true });
   });
@@ -106,14 +106,14 @@ describe('file-system utils', () => {
     it('follows broken symlinks by resolving readlink target', async () => {
       if (process.platform === 'win32') return; // requires elevated permissions
 
-      // Simulate: ~/.claude/skills/comet -> ../../.agents/skills/comet
-      const agentDir = path.join(tmpDir, '.agents', 'skills', 'comet');
+      // Simulate: ~/.claude/skills/zcw -> ../../.agents/skills/zcw
+      const agentDir = path.join(tmpDir, '.agents', 'skills', 'zcw');
       await fs.mkdir(agentDir, { recursive: true });
 
       const claudeSkillsDir = path.join(tmpDir, '.claude', 'skills');
       await fs.mkdir(claudeSkillsDir, { recursive: true });
-      const symlinkPath = path.join(claudeSkillsDir, 'comet');
-      await fs.symlink(path.join('..', '..', '.agents', 'skills', 'comet'), symlinkPath);
+      const symlinkPath = path.join(claudeSkillsDir, 'zcw');
+      await fs.symlink(path.join('..', '..', '.agents', 'skills', 'zcw'), symlinkPath);
 
       // Now remove the target to simulate a broken symlink
       await fs.rm(agentDir, { recursive: true });

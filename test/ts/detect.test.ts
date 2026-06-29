@@ -15,7 +15,7 @@ const mockPlatform: Platform = {
   id: 'claude',
   name: 'Claude Code',
   skillsDir: '.claude',
-  openspecToolId: 'claude',
+  specKitIntegrationId: 'claude',
 };
 
 describe('detect', () => {
@@ -24,7 +24,7 @@ describe('detect', () => {
   beforeEach(async () => {
     tmpDir = path.join(
       os.tmpdir(),
-      `comet-detect-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `zcw-detect-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
     await fs.mkdir(tmpDir, { recursive: true });
   });
@@ -50,7 +50,7 @@ describe('detect', () => {
       expect(kimicode).toBeDefined();
       expect(kimicode?.skillsDir).toBe('.kimi-code');
       expect(kimicode?.globalSkillsDir).toBe('.kimi-code');
-      expect(kimicode?.openspecToolId).toBe('kimi');
+      expect(kimicode?.specKitIntegrationId).toBe('kimi');
     });
 
     it('declares Lingma global skills under the user .lingma directory', () => {
@@ -109,11 +109,11 @@ describe('detect', () => {
   });
 
   describe('hasSkills', () => {
-    it('detects openspec skills when openspec- prefixed dirs exist', async () => {
-      await fs.mkdir(path.join(tmpDir, '.claude', 'skills', 'openspec-core'), {
+    it('detects spec kit skills when speckit- prefixed dirs exist', async () => {
+      await fs.mkdir(path.join(tmpDir, '.claude', 'skills', 'speckit-core'), {
         recursive: true,
       });
-      expect(await hasSkills(tmpDir, mockPlatform, 'openspec')).toBe(true);
+      expect(await hasSkills(tmpDir, mockPlatform, 'speckit')).toBe(true);
     });
 
     it('detects superpowers skills', async () => {
@@ -126,34 +126,34 @@ describe('detect', () => {
       expect(await hasSkills(tmpDir, mockPlatform, 'superpowers')).toBe(true);
     });
 
-    it('detects comet skills', async () => {
-      await fs.mkdir(path.join(tmpDir, '.claude', 'skills', 'comet'), { recursive: true });
-      expect(await hasSkills(tmpDir, mockPlatform, 'comet')).toBe(true);
+    it('detects zcw skills', async () => {
+      await fs.mkdir(path.join(tmpDir, '.claude', 'skills', 'zcw'), { recursive: true });
+      expect(await hasSkills(tmpDir, mockPlatform, 'zcw')).toBe(true);
     });
 
-    it('treats OpenCode Comet skills without slash commands as incomplete', async () => {
+    it('treats OpenCode zcw skills without slash commands as incomplete', async () => {
       const opencode = PLATFORMS.find((platform) => platform.id === 'opencode');
       expect(opencode).toBeDefined();
       if (!opencode) return;
 
-      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'comet'), { recursive: true });
-      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'comet-open'), { recursive: true });
+      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'zcw'), { recursive: true });
+      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'zcw-open'), { recursive: true });
 
-      expect(await hasSkills(tmpDir, opencode, 'comet')).toBe(false);
+      expect(await hasSkills(tmpDir, opencode, 'zcw')).toBe(false);
     });
 
-    it('detects OpenCode Comet skills when matching slash commands exist', async () => {
+    it('detects OpenCode zcw skills when matching slash commands exist', async () => {
       const opencode = PLATFORMS.find((platform) => platform.id === 'opencode');
       expect(opencode).toBeDefined();
       if (!opencode) return;
 
-      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'comet'), { recursive: true });
-      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'comet-open'), { recursive: true });
+      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'zcw'), { recursive: true });
+      await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'zcw-open'), { recursive: true });
       await fs.mkdir(path.join(tmpDir, '.opencode', 'commands'), { recursive: true });
-      await fs.writeFile(path.join(tmpDir, '.opencode', 'commands', 'comet.md'), '');
-      await fs.writeFile(path.join(tmpDir, '.opencode', 'commands', 'comet-open.md'), '');
+      await fs.writeFile(path.join(tmpDir, '.opencode', 'commands', 'zcw.md'), '');
+      await fs.writeFile(path.join(tmpDir, '.opencode', 'commands', 'zcw-open.md'), '');
 
-      expect(await hasSkills(tmpDir, opencode, 'comet')).toBe(true);
+      expect(await hasSkills(tmpDir, opencode, 'zcw')).toBe(true);
     });
 
     it('detects Antigravity global skills in the Gemini Antigravity directory', async () => {
@@ -161,26 +161,26 @@ describe('detect', () => {
       expect(antigravity).toBeDefined();
       if (!antigravity) return;
 
-      await fs.mkdir(path.join(tmpDir, '.gemini', 'antigravity', 'skills', 'comet'), {
+      await fs.mkdir(path.join(tmpDir, '.gemini', 'antigravity', 'skills', 'zcw'), {
         recursive: true,
       });
 
-      expect(await hasSkills(tmpDir, antigravity, 'comet', [], 'global')).toBe(true);
+      expect(await hasSkills(tmpDir, antigravity, 'zcw', [], 'global')).toBe(true);
     });
 
     it('returns false for missing skills', async () => {
       await fs.mkdir(path.join(tmpDir, '.claude', 'skills'), { recursive: true });
-      expect(await hasSkills(tmpDir, mockPlatform, 'comet')).toBe(false);
+      expect(await hasSkills(tmpDir, mockPlatform, 'zcw')).toBe(false);
     });
 
     it('returns false when skills directory does not exist', async () => {
-      expect(await hasSkills(tmpDir, mockPlatform, 'comet')).toBe(false);
+      expect(await hasSkills(tmpDir, mockPlatform, 'zcw')).toBe(false);
     });
 
     it('returns false when a platform directory exists without a skills directory', async () => {
       await fs.mkdir(path.join(tmpDir, '.claude'), { recursive: true });
 
-      expect(await hasSkills(tmpDir, mockPlatform, 'comet')).toBe(false);
+      expect(await hasSkills(tmpDir, mockPlatform, 'zcw')).toBe(false);
     });
 
     it('detects plugin-installed superpowers for claude platform', async () => {
@@ -234,7 +234,7 @@ describe('detect', () => {
         id: 'cursor',
         name: 'Cursor',
         skillsDir: '.cursor',
-        openspecToolId: 'cursor',
+        specKitIntegrationId: 'cursor',
       };
 
       expect(await hasSkills(tmpDir, cursorPlatform, 'superpowers')).toBe(false);

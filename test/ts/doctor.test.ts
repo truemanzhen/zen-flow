@@ -8,7 +8,7 @@ describe('doctor command', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = path.join(os.tmpdir(), `comet-doctor-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    tmpDir = path.join(os.tmpdir(), `zcw-doctor-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     await fs.mkdir(tmpDir, { recursive: true });
   });
 
@@ -16,11 +16,11 @@ describe('doctor command', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('accepts current comet state fields in JSON output', async () => {
-    const changeDir = path.join(tmpDir, 'openspec', 'changes', 'current-state');
+  it('accepts current zcw state fields in JSON output', async () => {
+    const changeDir = path.join(tmpDir, 'specs', 'current-state');
     await fs.mkdir(changeDir, { recursive: true });
     await fs.writeFile(
-      path.join(changeDir, '.comet.yaml'),
+      path.join(changeDir, '.zcw.yaml'),
       [
         'workflow: full',
         'phase: verify',
@@ -28,9 +28,9 @@ describe('doctor command', () => {
         'isolation: branch',
         'verify_mode: full',
         'verify_result: pending',
-        'design_doc: docs/superpowers/specs/current-state.md',
-        'plan: docs/superpowers/plans/current-state.md',
-        'verification_report: docs/superpowers/reports/current-state.md',
+        'design_doc: specs/current-state/plan.md',
+        'plan: specs/current-state/tasks.md',
+        'verification_report: specs/current-state/.zcw/verify-result.md',
         'branch_status: handled',
         'verified_at: null',
         'archived: false',
@@ -48,16 +48,16 @@ describe('doctor command', () => {
     }
 
     const results = JSON.parse(json).results as Array<{ check: string; status: string }>;
-    expect(results.find((result) => result.check === '.comet.yaml: current-state')).toMatchObject({
+    expect(results.find((result) => result.check === '.zcw.yaml: current-state')).toMatchObject({
       status: 'pass',
     });
   });
 
-  it('only validates top-level keys in .comet.yaml', async () => {
-    const validChangeDir = path.join(tmpDir, 'openspec', 'changes', 'nested-valid');
+  it('only validates top-level keys in .zcw.yaml', async () => {
+    const validChangeDir = path.join(tmpDir, 'specs', 'nested-valid');
     await fs.mkdir(validChangeDir, { recursive: true });
     await fs.writeFile(
-      path.join(validChangeDir, '.comet.yaml'),
+      path.join(validChangeDir, '.zcw.yaml'),
       [
         'workflow: full',
         'phase: verify',
@@ -69,10 +69,10 @@ describe('doctor command', () => {
       ].join('\n'),
     );
 
-    const invalidChangeDir = path.join(tmpDir, 'openspec', 'changes', 'top-level-invalid');
+    const invalidChangeDir = path.join(tmpDir, 'specs', 'top-level-invalid');
     await fs.mkdir(invalidChangeDir, { recursive: true });
     await fs.writeFile(
-      path.join(invalidChangeDir, '.comet.yaml'),
+      path.join(invalidChangeDir, '.zcw.yaml'),
       [
         'workflow: full',
         'phase: verify',
@@ -92,11 +92,11 @@ describe('doctor command', () => {
 
     const results = JSON.parse(json).results as Array<{ check: string; status: string; message: string }>;
 
-    expect(results.find((result) => result.check === '.comet.yaml: nested-valid')).toMatchObject({
+    expect(results.find((result) => result.check === '.zcw.yaml: nested-valid')).toMatchObject({
       status: 'pass',
     });
 
-    expect(results.find((result) => result.check === '.comet.yaml: top-level-invalid')).toMatchObject({
+    expect(results.find((result) => result.check === '.zcw.yaml: top-level-invalid')).toMatchObject({
       status: 'fail',
       message: expect.stringContaining('unknown_root_field'),
     });

@@ -21,10 +21,10 @@ export const STATE_TEXT = {
 };
 
 export const STATE_GLYPH = {
-  done: '✓',
-  current: '↻',
-  pending: '□',
-  failed: '×',
+  done: 'OK',
+  current: '>',
+  pending: '-',
+  failed: 'X',
   unknown: '?',
 };
 
@@ -50,10 +50,9 @@ export const SECTION_STATUS_CLASS = {
 };
 
 export const ARTIFACT_ROWS = [
-  ['proposal.md', 'proposal'],
-  ['design.md', 'design'],
-  ['tasks.md', 'tasks'],
+  ['spec.md', 'spec'],
   ['plan.md', 'plan'],
+  ['tasks.md', 'tasks'],
   ['verify-result.md', 'verifyReport'],
-  ['.comet.yaml', 'cometYaml'],
+  ['.zcw.yaml', 'zcwYaml'],
 ];

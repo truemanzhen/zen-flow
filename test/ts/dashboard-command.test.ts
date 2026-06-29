@@ -8,7 +8,7 @@ describe('dashboardCommand --json', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-dash-cmd-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-dash-cmd-'));
   });
 
   afterEach(async () => {
@@ -19,7 +19,7 @@ describe('dashboardCommand --json', () => {
     const changeDir = path.join(tmpDir, 'openspec', 'changes', 'sample');
     await fs.mkdir(changeDir, { recursive: true });
     await fs.writeFile(
-      path.join(changeDir, '.comet.yaml'),
+      path.join(changeDir, '.zcw.yaml'),
       ['phase: build', 'workflow: full', ''].join('\n'),
     );
     await fs.writeFile(path.join(changeDir, 'tasks.md'), '- [x] one\n- [ ] two\n');

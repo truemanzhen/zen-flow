@@ -1,17 +1,18 @@
-import path from 'path';
+﻿import path from 'path';
 import os from 'os';
 import { checkbox, select } from '@inquirer/prompts';
 import { platformSelectPrompt } from './platform-select-prompt.js';
 import { PLATFORMS, getPlatformSkillsDir, type Platform } from '../core/platforms.js';
 import { detectPlatforms, hasSkills, getBaseDir, type InstallScope } from '../core/detect.js';
 import {
-  copyCometSkillsForPlatform,
-  copyCometRulesForPlatform,
-  installCometHooksForPlatform,
+  copyZCWSkillsForPlatform,
+  copyZCWRulesForPlatform,
+  installZCWHooksForPlatform,
   createWorkingDirs,
+  installSpecKitExtension,
   type LanguageConfig,
 } from '../core/skills.js';
-import { installOpenSpec, isCommandAvailable } from '../core/openspec.js';
+import { installSpecKit, isCommandAvailable } from '../core/speckit.js';
 import { installSuperpowersForPlatforms } from '../core/superpowers.js';
 import {
   hasCodegraphProjectIndex,
@@ -36,9 +37,9 @@ type BulkOverwriteChoice = 'overwrite-all' | 'skip-all' | 'choose';
 
 interface PlatformResult {
   platform: Platform;
-  openspec: InstallStatus;
+  speckit: InstallStatus;
   superpowers: InstallStatus;
-  comet: InstallStatus;
+  zcw: InstallStatus;
   codegraph: InstallStatus;
 }
 
@@ -53,16 +54,7 @@ const LANGUAGES: LanguageConfig[] = [
   { id: 'zh', name: '中文', skillsDir: 'skills-zh' },
 ];
 
-const COMET_BANNER = [
-  `   ██████╗ ██████╗ ███╗   ███╗███████╗████████╗`,
-  `  ██╔════╝██╔═══██╗████╗ ████║██╔════╝╚══██╔══╝`,
-  `  ██║     ██║   ██║██╔████╔██║█████╗     ██║   `,
-  `  ██║     ██║   ██║██║╚██╔╝██║██╔══╝     ██║   `,
-  `  ╚██████╗╚██████╔╝██║ ╚═╝ ██║███████╗   ██║   `,
-  `   ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝   ╚═╝   `,
-  `       Agent Skill Harness Phase-Guarded Automation`,
-  `               From Idea To Archive                `,
-].join('\n');
+const ZCW_BANNER = [`  ZEN FLOW`, `  Spec Kit + Superpowers workflow automation`].join('\n');
 
 async function selectScope(options: InitOptions, lang: string): Promise<InstallScope> {
   if (options.scope) return options.scope;
@@ -174,7 +166,7 @@ function resolveAction(
   return 'install';
 }
 
-type NpmDepId = 'openspec' | 'superpowers' | 'codegraph';
+type NpmDepId = 'speckit' | 'superpowers' | 'codegraph';
 
 interface NpmDepState {
   id: NpmDepId;
@@ -187,20 +179,20 @@ async function selectNpmDeps(
   options: InitOptions,
   lang: string,
 ): Promise<Set<NpmDepId>> {
-  const openSpecInstalled = isCommandAvailable('openspec');
+  const specKitInstalled = isCommandAvailable('specify');
   const codegraphInstalled =
-    hasCodegraphProjectIndex(projectPath) || resolveCodegraphCommand() !== null;
+    hasCodegraphProjectIndex(projectPath) || resolveCodegraphCommand(projectPath) !== null;
   const superpowersInstalled = spPlatformIds.length === 0 ? true : undefined;
 
   const states: NpmDepState[] = [
-    { id: 'openspec', installed: openSpecInstalled },
+    { id: 'speckit', installed: specKitInstalled },
     { id: 'superpowers', installed: Boolean(superpowersInstalled) },
     { id: 'codegraph', installed: codegraphInstalled },
   ];
 
   const depLabel: Record<NpmDepId, (installed: boolean) => string> = {
-    openspec: (installed) =>
-      installed ? t(lang, 'npmDepOpenSpecInstalled') : t(lang, 'npmDepOpenSpec'),
+    speckit: (installed) =>
+      installed ? t(lang, 'npmDepSpecKitInstalled') : t(lang, 'npmDepSpecKit'),
     superpowers: (installed) =>
       installed ? t(lang, 'npmDepSuperpowersInstalled') : t(lang, 'npmDepSuperpowers'),
     codegraph: (installed) =>
@@ -242,9 +234,9 @@ async function selectNpmDeps(
 function displaySummary(results: PlatformResult[], scope: InstallScope, lang: string): void {
   const scopeLabel = scope === 'global' ? os.homedir() : 'project';
   const componentStatuses: Array<[keyof Omit<PlatformResult, 'platform'>, string]> = [
-    ['openspec', 'OpenSpec'],
+    ['speckit', 'Spec Kit'],
     ['superpowers', 'Superpowers'],
-    ['comet', 'Comet'],
+    ['zcw', 'ZCW'],
     ['codegraph', 'CodeGraph'],
   ];
   const hasFailure = (result: PlatformResult) =>
@@ -284,7 +276,7 @@ function displaySummary(results: PlatformResult[], scope: InstallScope, lang: st
   }
 
   console.log(`\n  ${t(lang, 'getStarted')}`);
-  console.log(`    ${t(lang, 'getStartedComet')}`);
+  console.log(`    ${t(lang, 'getStartedZCW')}`);
   console.log(`    ${t(lang, 'getStartedHotfix')}`);
   console.log(`    ${t(lang, 'getStartedTweak')}\n`);
 }
@@ -293,7 +285,7 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
   const projectPath = path.resolve(targetPath);
   const log = options.json ? () => undefined : console.log;
 
-  log(`\n${COMET_BANNER}\n`);
+  log(`\n${ZCW_BANNER}\n`);
   if (!options.json) {
     await printVersionInfo(log);
   }
@@ -341,9 +333,9 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
   const plans: PlatformPlan[] = [];
 
   for (const platform of selectedPlatforms) {
-    const hasOS = await hasSkills(baseDir, platform, 'openspec', selectedPlatforms, scope);
+    const hasOS = await hasSkills(baseDir, platform, 'speckit', selectedPlatforms, scope);
     const hasSP = await hasSkills(baseDir, platform, 'superpowers', selectedPlatforms, scope);
-    const hasCM = await hasSkills(baseDir, platform, 'comet', selectedPlatforms, scope);
+    const hasCM = await hasSkills(baseDir, platform, 'zcw', selectedPlatforms, scope);
 
     let osAction = resolveAction(hasOS, options);
     let spAction = resolveAction(hasSP, options);
@@ -351,9 +343,9 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
 
     if (!options.yes) {
       const existingComponents = [
-        hasOS && osAction === 'install' ? 'OpenSpec' : null,
+        hasOS && osAction === 'install' ? 'Spec Kit' : null,
         hasSP && spAction === 'install' ? 'Superpowers' : null,
-        hasCM && cmAction === 'install' ? 'Comet' : null,
+        hasCM && cmAction === 'install' ? 'ZCW' : null,
       ].filter((component): component is string => Boolean(component));
 
       if (existingComponents.length > 1) {
@@ -368,13 +360,13 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
       }
 
       if (osAction === 'install' && hasOS) {
-        osAction = await promptOverwriteChoice('OpenSpec', platform.name, lang);
+        osAction = await promptOverwriteChoice('Spec Kit', platform.name, lang);
       }
       if (spAction === 'install' && hasSP) {
         spAction = await promptOverwriteChoice('Superpowers', platform.name, lang);
       }
       if (cmAction === 'install' && hasCM) {
-        cmAction = await promptOverwriteChoice('Comet', platform.name, lang);
+        cmAction = await promptOverwriteChoice('ZCW', platform.name, lang);
       }
     }
 
@@ -383,26 +375,26 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
 
   const osToolIds = plans
     .filter((p) => p.osAction !== 'skip')
-    .map((p) => p.platform.openspecToolId);
+    .map((p) => p.platform.specKitIntegrationId);
 
   const spPlatformIds = plans.filter((p) => p.spAction !== 'skip').map((p) => p.platform.id);
 
   const selectedNpmDeps = await selectNpmDeps(projectPath, spPlatformIds, options, lang);
-  const shouldInstallOpenSpecCli = selectedNpmDeps.has('openspec');
+  const shouldInstallSpecKitCli = selectedNpmDeps.has('speckit');
   const shouldInstallSuperpowers = selectedNpmDeps.has('superpowers');
   const shouldInstallCodegraphCli = selectedNpmDeps.has('codegraph');
 
   let osGlobalStatus: InstallStatus = 'skipped';
   if (osToolIds.length > 0) {
     log(`\n  ${t(lang, 'installingOS')} ${osToolIds.join(', ')}`);
-    osGlobalStatus = await installOpenSpec(projectPath, osToolIds, scope, shouldInstallOpenSpecCli);
-    if (osGlobalStatus === 'skipped' && !shouldInstallOpenSpecCli) {
-      log(`  OpenSpec: ${t(lang, 'osSkippedNoCli')}`);
+    osGlobalStatus = await installSpecKit(projectPath, osToolIds, scope, shouldInstallSpecKitCli);
+    if (osGlobalStatus === 'skipped' && !shouldInstallSpecKitCli) {
+      log(`  Spec Kit: ${t(lang, 'osSkippedNoCli')}`);
     } else {
-      log(`  OpenSpec: ${osGlobalStatus}`);
+      log(`  Spec Kit: ${osGlobalStatus}`);
     }
   } else {
-    log(`\n  OpenSpec: ${t(lang, 'allSkipped')}`);
+    log(`\n  Spec Kit: ${t(lang, 'allSkipped')}`);
   }
 
   let spGlobalStatus: InstallStatus = 'skipped';
@@ -433,7 +425,7 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
 
     let cmStatus: InstallStatus = 'skipped';
     if (cmAction !== 'skip') {
-      const { copied } = await copyCometSkillsForPlatform(
+      const { copied } = await copyZCWSkillsForPlatform(
         baseDir,
         platform,
         cmAction === 'overwrite',
@@ -441,37 +433,37 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
         scope,
       );
       cmStatus = copied > 0 ? 'installed' : 'skipped';
-      log(`  Comet -> ${platform.name}: ${cmStatus} (${copied} files) -> ${skillsPath}`);
+      log(`  ZCW -> ${platform.name}: ${cmStatus} (${copied} files) -> ${skillsPath}`);
     } else {
-      log(`  Comet -> ${platform.name}: skipped (${t(lang, 'alreadyExists')})`);
+      log(`  ZCW -> ${platform.name}: skipped (${t(lang, 'alreadyExists')})`);
     }
 
     if (cmAction !== 'skip') {
-      const { copied: ruleCopied } = await copyCometRulesForPlatform(
+      const { copied: ruleCopied } = await copyZCWRulesForPlatform(
         baseDir,
         platform,
         cmAction === 'overwrite',
         scope,
       );
       if (ruleCopied > 0) {
-        log(`  Comet rules -> ${platform.name}: ${ruleCopied} ${t(lang, 'rulesInstalled')}`);
+        log(`  ZCW rules -> ${platform.name}: ${ruleCopied} ${t(lang, 'rulesInstalled')}`);
       }
     }
 
     if (cmAction !== 'skip' && platform.supportsHooks) {
-      const { installed, reason } = await installCometHooksForPlatform(baseDir, platform, scope);
+      const { installed, reason } = await installZCWHooksForPlatform(baseDir, platform, scope);
       if (installed) {
-        log(`  Comet hooks -> ${platform.name}: ${t(lang, 'hooksInstalled')}`);
+        log(`  ZCW hooks -> ${platform.name}: ${t(lang, 'hooksInstalled')}`);
       } else if (reason) {
-        log(`  Comet hooks -> ${platform.name}: ${t(lang, 'hooksSkipped')} (${reason})`);
+        log(`  ZCW hooks -> ${platform.name}: ${t(lang, 'hooksSkipped')} (${reason})`);
       }
     }
 
     results.push({
       platform,
-      openspec: osToolIds.includes(platform.openspecToolId) ? osGlobalStatus : 'skipped',
+      speckit: osToolIds.includes(platform.specKitIntegrationId) ? osGlobalStatus : 'skipped',
       superpowers: plan.spAction !== 'skip' ? spGlobalStatus : 'skipped',
-      comet: cmStatus,
+      zcw: cmStatus,
       codegraph: 'skipped',
     });
   }
@@ -501,6 +493,18 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     await createWorkingDirs(projectPath);
   }
 
+  const specKitExtension =
+    scope === 'project'
+      ? await installSpecKitExtension(projectPath, true)
+      : { installed: false, reason: 'global scope does not install project Spec Kit extensions' };
+  if (!options.json && scope === 'project') {
+    log(
+      specKitExtension.installed
+        ? '  ZCW Spec Kit extension: installed'
+        : `  ZCW Spec Kit extension: skipped (${specKitExtension.reason})`,
+    );
+  }
+
   if (options.json) {
     console.log(
       JSON.stringify(
@@ -512,12 +516,13 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
           results: results.map((result) => ({
             platform: result.platform.id,
             platformName: result.platform.name,
-            openspec: result.openspec,
+            speckit: result.speckit,
             superpowers: result.superpowers,
-            comet: result.comet,
+            zcw: result.zcw,
             codegraph: result.codegraph,
           })),
           workingDirsCreated: scope === 'project',
+          specKitExtension,
         },
         null,
         2,

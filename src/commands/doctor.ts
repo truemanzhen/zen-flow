@@ -3,10 +3,11 @@ import os from 'os';
 import { execSync } from 'child_process';
 import { promises as fs } from 'fs';
 import { fileExists, readDir } from '../utils/file-system.js';
-import { isCommandAvailable } from '../core/openspec.js';
+import { isCommandAvailable } from '../core/speckit.js';
 import { hasCodegraphProjectIndex, resolveCodegraphCommand } from '../core/codegraph.js';
 import { readManifest, getAssetsDir } from '../core/skills.js';
 import { PLATFORMS, getPlatformSkillsDirs } from '../core/platforms.js';
+import { readBridgeStatus } from '../core/bridge.js';
 import type { InstallScope } from '../core/types.js';
 
 interface CheckResult {
@@ -50,39 +51,40 @@ function collectTopLevelYamlKeys(yamlContent: string): string[] {
   return topLevelKeys;
 }
 
-async function checkOpenSpecCli(): Promise<CheckResult> {
-  if (!isCommandAvailable('openspec')) {
+async function checkSpecKitCli(): Promise<CheckResult> {
+  if (!isCommandAvailable('specify')) {
     return {
-      check: 'openspec CLI',
+      check: 'Spec Kit CLI',
       status: 'warn',
-      message: 'not installed — install with: npm install -g @fission-ai/openspec@latest',
+      message: 'not installed - install github/spec-kit so the specify command is on PATH',
     };
   }
   try {
-    const version = execSync('openspec --version', { stdio: 'pipe', timeout: 10_000 })
+    const version = execSync('specify --version', { stdio: 'pipe', timeout: 10_000 })
       .toString()
       .trim();
-    return { check: 'openspec CLI', status: 'pass', message: `installed (${version})` };
+    return { check: 'Spec Kit CLI', status: 'pass', message: `installed (${version})` };
   } catch {
-    return { check: 'openspec CLI', status: 'pass', message: 'installed' };
+    return { check: 'Spec Kit CLI', status: 'pass', message: 'installed' };
   }
 }
 
 async function checkWorkingDirs(projectPath: string): Promise<CheckResult> {
-  const specsDir = path.join(projectPath, 'docs', 'superpowers', 'specs');
-  const plansDir = path.join(projectPath, 'docs', 'superpowers', 'plans');
+  const specsDir = path.join(projectPath, 'specs');
+  const zcwDir = path.join(projectPath, '.zcw');
   const specsExist = await fileExists(specsDir);
-  const plansExist = await fileExists(plansDir);
+  const zcwExist = await fileExists(zcwDir);
 
-  if (specsExist && plansExist) {
+  if (specsExist && zcwExist) {
     return { check: 'working directories', status: 'pass', message: 'present' };
   }
-  if (!specsExist && !plansExist) {
-    return { check: 'working directories', status: 'fail', message: 'missing — run: comet init' };
+  if (!specsExist && !zcwExist) {
+    return { check: 'working directories', status: 'fail', message: 'missing - run: zcw init' };
   }
+
   const missing = [];
   if (!specsExist) missing.push('specs');
-  if (!plansExist) missing.push('plans');
+  if (!zcwExist) missing.push('.zcw');
   return {
     check: 'working directories',
     status: 'warn',
@@ -163,8 +165,8 @@ async function checkSkillCompleteness(
       status: 'warn',
       message:
         scope === 'auto'
-          ? 'no platforms detected in project or global scope — run comet init'
-          : `no platforms detected in ${scope} scope — run comet init`,
+          ? 'no platforms detected in project or global scope - run zcw init'
+          : `no platforms detected in ${scope} scope - run zcw init`,
     });
   }
 
@@ -173,7 +175,7 @@ async function checkSkillCompleteness(
 
 async function checkScriptsPresent(): Promise<CheckResult> {
   const assetsDir = getAssetsDir();
-  const scriptsDir = path.join(assetsDir, 'skills', 'comet', 'scripts');
+  const scriptsDir = path.join(assetsDir, 'skills', 'zcw', 'scripts');
   if (!(await fileExists(scriptsDir))) {
     return { check: 'scripts present', status: 'warn', message: 'scripts directory not found' };
   }
@@ -188,15 +190,15 @@ async function checkScriptsPresent(): Promise<CheckResult> {
   };
 }
 
-async function checkCometYamlValidity(projectPath: string): Promise<CheckResult[]> {
-  const changesDir = path.join(projectPath, 'openspec', 'changes');
+async function checkZCWYamlValidity(projectPath: string): Promise<CheckResult[]> {
+  const changesDir = path.join(projectPath, 'specs');
   if (!(await fileExists(changesDir))) return [];
 
   const entries = await readDir(changesDir);
   const results: CheckResult[] = [];
 
   for (const entry of entries) {
-    const yamlPath = path.join(changesDir, entry, '.comet.yaml');
+    const yamlPath = path.join(changesDir, entry, '.zcw.yaml');
     if (!(await fileExists(yamlPath))) continue;
 
     const raw = await fs.readFile(yamlPath, 'utf-8');
@@ -204,9 +206,9 @@ async function checkCometYamlValidity(projectPath: string): Promise<CheckResult[
 
     results.push(
       unknownFields.length === 0
-        ? { check: `.comet.yaml: ${entry}`, status: 'pass' as const, message: 'valid' }
+        ? { check: `.zcw.yaml: ${entry}`, status: 'pass' as const, message: 'valid' }
         : {
-            check: `.comet.yaml: ${entry}`,
+            check: `.zcw.yaml: ${entry}`,
             status: 'fail' as const,
             message: `unknown field(s): ${unknownFields.join(', ')}`,
           },
@@ -221,11 +223,11 @@ async function checkCodegraph(projectPath: string, scope: DoctorScope): Promise<
     return { check: 'CodeGraph', status: 'pass', message: 'initialized (.codegraph/ present)' };
   }
 
-  if (!resolveCodegraphCommand()) {
+  if (!resolveCodegraphCommand(projectPath)) {
     return {
       check: 'CodeGraph CLI',
       status: 'warn',
-      message: 'not installed — install with: npm install -g @colbymchenry/codegraph',
+      message: 'not installed - run npm install to restore package dependencies',
     };
   }
 
@@ -238,35 +240,95 @@ async function checkCodegraph(projectPath: string, scope: DoctorScope): Promise<
     return {
       check: 'CodeGraph',
       status: 'warn',
-      message: 'CLI installed but project not initialized — run: codegraph init -i',
+      message: 'CLI installed but project not initialized - run: codegraph init -i',
     };
   }
 
   return { check: 'CodeGraph', status: 'pass', message: 'initialized (.codegraph/ present)' };
 }
 
+async function checkBridgeExtensionAssets(): Promise<CheckResult> {
+  const assetsDir = getAssetsDir();
+  const required = [
+    'extension.yml',
+    path.join('commands', 'zcw.execute.md'),
+    path.join('commands', 'zcw.guard.md'),
+    path.join('commands', 'zcw.handoff.md'),
+  ];
+  const missing: string[] = [];
+  for (const relPath of required) {
+    if (!(await fileExists(path.join(assetsDir, 'spec-kit-extension', relPath)))) {
+      missing.push(relPath.replace(/\\/g, '/'));
+    }
+  }
+
+  if (missing.length > 0) {
+    return {
+      check: 'Spec Kit extension assets',
+      status: 'fail',
+      message: `missing ${missing.length}: ${missing.join(', ')}`,
+    };
+  }
+
+  return { check: 'Spec Kit extension assets', status: 'pass', message: 'present' };
+}
+
+async function checkBridgeState(projectPath: string): Promise<CheckResult> {
+  const bridge = await readBridgeStatus(projectPath);
+  if (bridge.state === 'corrupted') {
+    return {
+      check: 'bridge handoff',
+      status: 'fail',
+      message: bridge.error ?? 'corrupted handoff JSON',
+    };
+  }
+  if (bridge.state === 'no-specify') {
+    return { check: 'bridge handoff', status: 'warn', message: 'no .specify directory' };
+  }
+  if (bridge.state === 'no-handoff') {
+    return {
+      check: 'bridge handoff',
+      status: 'warn',
+      message: 'no .specify/superpowers-handoff.json',
+    };
+  }
+
+  return {
+    check: 'bridge handoff',
+    status: 'pass',
+    message: `${bridge.status} (${bridge.featureDirectory}, pending tasks: ${
+      bridge.pendingTasks ?? 'unknown'
+    })`,
+  };
+}
+
 async function collectResults(projectPath: string, scope: DoctorScope): Promise<CheckResult[]> {
   const results: CheckResult[] = [];
-  results.push(await checkOpenSpecCli());
+  results.push(await checkSpecKitCli());
   if (scope !== 'global') {
     results.push(await checkWorkingDirs(projectPath));
   }
   results.push(...(await checkSkillCompleteness(projectPath, scope)));
   results.push(await checkScriptsPresent());
   results.push(await checkCodegraph(projectPath, scope));
-  results.push(...(await checkCometYamlValidity(projectPath)));
+  results.push(...(await checkZCWYamlValidity(projectPath)));
   return results;
 }
 
+async function collectReadinessResults(projectPath: string): Promise<CheckResult[]> {
+  return [await checkBridgeExtensionAssets(), await checkBridgeState(projectPath)];
+}
+
 function icon(status: string): string {
-  if (status === 'pass') return '✓';
-  if (status === 'warn') return '⚠';
-  return '✗';
+  if (status === 'pass') return 'PASS';
+  if (status === 'warn') return 'WARN';
+  return 'FAIL';
 }
 
 interface DoctorOptions {
   json?: boolean;
   scope?: DoctorScope;
+  readiness?: boolean;
 }
 
 export async function doctorCommand(
@@ -276,13 +338,16 @@ export async function doctorCommand(
   const projectPath = path.resolve(targetPath);
   const scope = options.scope ?? 'auto';
   const results = await collectResults(projectPath, scope);
+  if (options.readiness) {
+    results.push(...(await collectReadinessResults(projectPath)));
+  }
 
   if (options.json) {
-    console.log(JSON.stringify({ scope, results }, null, 2));
+    console.log(JSON.stringify({ scope, readiness: Boolean(options.readiness), results }, null, 2));
     return;
   }
 
-  console.log(`Comet Doctor (scope: ${scope})\n`);
+  console.log(`Zen Flow Doctor (scope: ${scope}${options.readiness ? ', readiness' : ''})\n`);
 
   for (const r of results) {
     console.log(`  ${icon(r.status)} ${r.check}: ${r.message}`);

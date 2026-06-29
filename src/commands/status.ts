@@ -1,8 +1,12 @@
 import path from 'path';
 import { fileExists, readDir } from '../utils/file-system.js';
 import { promises as fs } from 'fs';
+import { readBridgeStatus } from '../core/bridge.js';
+import { printBridgeStatus } from './bridge.js';
+import { formatSessionNext, getNextWorkflowStep } from '../core/session.js';
+import { formatNextRecommendation, recommendProjectNext } from './next.js';
 
-type CometState = Record<string, string>;
+type ZCWState = Record<string, string>;
 
 interface ChangeStatus {
   name: string;
@@ -22,15 +26,15 @@ interface ChangeStatus {
 function getNextCommand(phase: string): string | null {
   switch (phase) {
     case 'open':
-      return '/comet-open';
+      return '/zcw-open';
     case 'design':
-      return '/comet-design';
+      return '/zcw-design';
     case 'build':
-      return '/comet-build';
+      return '/zcw-build';
     case 'verify':
-      return '/comet-verify';
+      return '/zcw-verify';
     case 'archive':
-      return '/comet-archive';
+      return '/zcw-archive';
     default:
       return null;
   }
@@ -45,11 +49,11 @@ async function countTasks(tasksPath: string): Promise<{ done: number; total: num
   return { done, total };
 }
 
-async function readCometState(changesDir: string, changeName: string): Promise<CometState | null> {
-  const yamlPath = path.join(changesDir, changeName, '.comet.yaml');
+async function readZCWState(changesDir: string, changeName: string): Promise<ZCWState | null> {
+  const yamlPath = path.join(changesDir, changeName, '.zcw.yaml');
   if (!(await fileExists(yamlPath))) return null;
   const raw = await fs.readFile(yamlPath, 'utf-8');
-  const state: CometState = {};
+  const state: ZCWState = {};
   for (const line of raw.split('\n')) {
     const stripped = line.replace(/\s+#.*$/, '');
     const match = stripped.match(/^(\w[\w_]*):\s*(.*)/);
@@ -59,7 +63,7 @@ async function readCometState(changesDir: string, changeName: string): Promise<C
 }
 
 async function getActiveChanges(projectPath: string): Promise<ChangeStatus[]> {
-  const changesDir = path.join(projectPath, 'openspec', 'changes');
+  const changesDir = path.join(projectPath, 'specs');
   if (!(await fileExists(changesDir))) return [];
 
   const entries = await readDir(changesDir);
@@ -70,7 +74,7 @@ async function getActiveChanges(projectPath: string): Promise<ChangeStatus[]> {
     const stat = await fs.stat(changeDir);
     if (!stat.isDirectory()) continue;
 
-    const state = await readCometState(changesDir, entry);
+    const state = await readZCWState(changesDir, entry);
     if (!state) continue;
     if (state.archived === 'true') continue;
 
@@ -118,6 +122,8 @@ function displayStatus(changes: ChangeStatus[]): void {
 
 interface StatusOptions {
   json?: boolean;
+  bridge?: boolean;
+  next?: boolean;
 }
 
 export async function statusCommand(
@@ -126,11 +132,39 @@ export async function statusCommand(
 ): Promise<void> {
   const projectPath = path.resolve(targetPath);
   const changes = await getActiveChanges(projectPath);
+  const bridge = options.bridge ? await readBridgeStatus(projectPath) : null;
+  const sessionNext = options.next ? await getNextWorkflowStep(projectPath) : null;
+  const nextRecommendation = options.next ? await recommendProjectNext(projectPath) : null;
 
   if (options.json) {
-    console.log(JSON.stringify({ changes }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          changes,
+          ...(bridge ? { bridge } : {}),
+          ...(options.next ? { sessionNext } : {}),
+          ...(nextRecommendation ? { nextRecommendation } : {}),
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
   displayStatus(changes);
+  if (bridge) {
+    printBridgeStatus(bridge);
+  }
+  if (options.next) {
+    if (sessionNext) {
+      console.log(formatSessionNext(sessionNext));
+    } else {
+      console.log('No ZCW session found.');
+    }
+    if (nextRecommendation) {
+      console.log();
+      console.log(formatNextRecommendation(nextRecommendation));
+    }
+  }
 }

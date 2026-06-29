@@ -34,10 +34,10 @@ function syncTabAria(activeTab, list) {
 function renderEmptyList(activeTab) {
   const [title, copy] =
     activeTab === 'archived'
-      ? ['暂无归档迭代', 'No archived Comet changes found in this repository.']
+      ? ['暂无归档迭代', 'No archived ZCW changes found in this repository.']
       : activeTab === 'active'
-        ? ['当前无活跃迭代', 'No active Comet changes found in this repository.']
-        : ['当前无 Comet 迭代', 'No Comet changes found in this repository.'];
+        ? ['当前无活跃迭代', 'No active ZCW changes found in this repository.']
+        : ['当前无 ZCW 迭代', 'No ZCW changes found in this repository.'];
   return `
     <div class="list-empty" data-component="EmptyState">
       <strong>${escape(title)}</strong>

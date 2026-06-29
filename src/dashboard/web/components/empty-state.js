@@ -9,9 +9,9 @@ export function renderEmptyState({ snapshot }) {
   const empty = document.getElementById('emptyState');
   empty.hidden = !isEmpty;
   if (isEmpty) {
-    document.getElementById('emptyTitle').textContent = '当前无 Comet 迭代';
+    document.getElementById('emptyTitle').textContent = '当前无 ZCW 迭代';
     const copy = document.getElementById('emptyCopy');
-    copy.textContent = 'No Comet changes found in this repository.';
+    copy.textContent = 'No ZCW changes found in this repository.';
     copy.lang = 'en';
   }
 }

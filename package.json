@@ -1,10 +1,11 @@
 {
-  "name": "@rpamis/comet",
+  "name": "zen-flow",
   "version": "0.3.11",
-  "description": "Agent Skill Harness Phase-Guarded Automation From Idea To Archive",
+  "description": "Spec Kit + Superpowers phase-guarded automation from idea to archive",
   "keywords": [
-    "comet",
-    "openspec",
+    "zcw",
+    "spec-kit",
+    "speckit",
     "superpowers",
     "skills",
     "workflow"
@@ -16,7 +17,7 @@
     "access": "public"
   },
   "bin": {
-    "comet": "./bin/comet.js"
+    "zcw": "./bin/zcw.js"
   },
   "files": [
     "dist",
@@ -52,22 +53,23 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24.2.0",
-    "@vitest/coverage-v8": "^4.1.6",
-    "eslint": "^10.4.0",
+    "@types/node": "^24.13.2",
+    "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.6.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
-    "prettier": "^3.8.3",
+    "prettier": "^3.9.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.59.3",
-    "vitest": "^4.1.6"
+    "typescript-eslint": "^8.62.0",
+    "vitest": "^4.1.9"
   },
   "dependencies": {
-    "@inquirer/ansi": "^2.0.5",
-    "@inquirer/core": "^11.1.10",
-    "@inquirer/figures": "^2.0.5",
-    "@inquirer/prompts": "^8.4.3",
-    "@inquirer/type": "^4.0.5",
+    "@colbymchenry/codegraph": "^1.1.2",
+    "@inquirer/ansi": "^2.0.7",
+    "@inquirer/core": "^11.2.1",
+    "@inquirer/figures": "^2.0.7",
+    "@inquirer/prompts": "^8.5.2",
+    "@inquirer/type": "^4.0.7",
     "commander": "^14.0.0"
   }
 }

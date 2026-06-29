@@ -8,7 +8,7 @@ describe('resolveVerify', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-verify-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-verify-'));
   });
 
   afterEach(async () => {
@@ -39,8 +39,8 @@ describe('resolveVerify', () => {
     expect(result.result).toBe('unknown');
   });
 
-  it('detects a verify report at .comet/verify-result.md and extracts a summary', async () => {
-    const reportPath = path.join(tmpDir, '.comet', 'verify-result.md');
+  it('detects a verify report at .zcw/verify-result.md and extracts a summary', async () => {
+    const reportPath = path.join(tmpDir, '.zcw', 'verify-result.md');
     await fs.mkdir(path.dirname(reportPath), { recursive: true });
     await fs.writeFile(
       reportPath,
@@ -90,7 +90,7 @@ describe('resolveVerify', () => {
   it('rejects traversal paths in verification_report and falls back to the default location', async () => {
     // Plant a "secret" outside the change directory and make sure a malicious
     // verification_report value cannot read it.
-    const secretsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-secret-'));
+    const secretsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-secret-'));
     const secretPath = path.join(secretsDir, 'leak.md');
     await fs.writeFile(secretPath, 'ssh-rsa AAAA...');
 
@@ -114,7 +114,7 @@ describe('resolveVerify', () => {
   });
 
   it('rejects absolute paths in verification_report', async () => {
-    const elsewhere = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-abs-'));
+    const elsewhere = await fs.mkdtemp(path.join(os.tmpdir(), 'zcw-abs-'));
     const absReport = path.join(elsewhere, 'abs.md');
     await fs.writeFile(absReport, 'absolute-content');
 
@@ -132,7 +132,7 @@ describe('resolveVerify', () => {
   });
 
   it('falls back to "fail" when only the report exists and yaml has nothing', async () => {
-    const reportPath = path.join(tmpDir, '.comet', 'verify-result.md');
+    const reportPath = path.join(tmpDir, '.zcw', 'verify-result.md');
     await fs.mkdir(path.dirname(reportPath), { recursive: true });
     await fs.writeFile(reportPath, 'FAILED: 2 regressions detected.');
 

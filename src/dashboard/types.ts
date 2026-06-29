@@ -39,12 +39,11 @@ export interface TasksSummary {
 }
 
 export interface ArtifactsSummary {
-  proposal: boolean;
-  design: boolean;
+  spec: boolean;
   tasks: boolean;
   plan: boolean;
   verifyReport: boolean;
-  cometYaml: boolean;
+  zcwYaml: boolean;
 }
 
 export interface VerifySummary {

@@ -1,4 +1,4 @@
-// Comet Dashboard frontend entry.
+// ZCW Dashboard frontend entry.
 //
 // Fetches /api/dashboard, owns the top-level state (selectedId / activeTab /
 // snapshot), and delegates the DOM work to the small components in

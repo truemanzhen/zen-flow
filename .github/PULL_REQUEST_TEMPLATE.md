@@ -8,8 +8,8 @@
 
 - [ ] CLI commands (`init`, `status`, `doctor`, `update`)
 - [ ] Core installer / platform detection
-- [ ] Comet skills (`assets/skills/`, `assets/skills-zh/`)
-- [ ] Comet shell scripts (`assets/skills/comet/scripts/`)
+- [ ] ZCW skills (`assets/skills/`, `assets/skills-zh/`)
+- [ ] ZCW shell scripts (`assets/skills/zcw/scripts/`)
 - [ ] Tests / CI
 - [ ] Documentation / changelog
 - [ ] Other:
@@ -22,7 +22,7 @@
 - [ ] `pnpm lint`
 - [ ] `pnpm format:check`
 - [ ] `pnpm test`
-- [ ] `pnpm test -- test/ts/comet-scripts.test.ts`
+- [ ] `pnpm test -- test/ts/zcw-scripts.test.ts`
 - [ ] `pnpm test:shell`
 - [ ] Not run:
 

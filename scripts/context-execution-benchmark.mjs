@@ -62,7 +62,7 @@ function usage() {
 function parseArgs(argv) {
   const options = {
     phase: 'both',
-    workspace: path.join(REPO_ROOT, '.comet', 'benchmark-runs'),
+    workspace: path.join(REPO_ROOT, '.zcw', 'benchmark-runs'),
     repeats: 1,
     claudeCommand: 'claude',
     model: null,
@@ -119,7 +119,7 @@ async function createChangeFixture(changeDir, mode, tier) {
   await fs.mkdir(path.join(changeDir, 'specs', 'note-board'), { recursive: true });
 
   await fs.writeFile(
-    path.join(changeDir, '.comet.yaml'),
+    path.join(changeDir, '.zcw.yaml'),
     [
       'workflow: full', 'phase: design', `context_compression: ${mode}`,
       'build_mode: null', 'build_pause: null', 'subagent_dispatch: null',
@@ -175,14 +175,14 @@ async function createChangeFixture(changeDir, mode, tier) {
 }
 
 /**
- * L1 fixture: project root with .comet config + change directory.
+ * L1 fixture: project root with .zcw config + change directory.
  * No src/tests — L1 only tests Design Doc generation.
  */
 async function createL1Fixture(root, mode, tier) {
   const changeDir = path.join(root, 'openspec', 'changes', CHANGE_NAME);
   await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  await fs.mkdir(path.join(root, '.comet'), { recursive: true });
-  await fs.writeFile(path.join(root, '.comet', 'config.yaml'), `context_compression: ${mode}\n`);
+  await fs.mkdir(path.join(root, '.zcw'), { recursive: true });
+  await fs.writeFile(path.join(root, '.zcw', 'config.yaml'), `context_compression: ${mode}\n`);
   await createChangeFixture(changeDir, mode, tier);
 }
 
@@ -193,10 +193,10 @@ async function createL1Fixture(root, mode, tier) {
 async function createL2Fixture(root, mode, tier) {
   const changeDir = path.join(root, 'openspec', 'changes', CHANGE_NAME);
   await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  await fs.mkdir(path.join(root, '.comet'), { recursive: true });
+  await fs.mkdir(path.join(root, '.zcw'), { recursive: true });
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.mkdir(path.join(root, 'tests'), { recursive: true });
-  await fs.writeFile(path.join(root, '.comet', 'config.yaml'), `context_compression: ${mode}\n`);
+  await fs.writeFile(path.join(root, '.zcw', 'config.yaml'), `context_compression: ${mode}\n`);
   await createChangeFixture(changeDir, mode, tier);
 
   await fs.writeFile(path.join(root, 'package.json'), JSON.stringify({
@@ -283,25 +283,25 @@ function buildSpec(count) {
   return lines.join('\n');
 }
 
-// ── Handoff generation (real comet-handoff.sh) ─────────────────────
+// ── Handoff generation (real zcw-handoff.sh) ─────────────────────
 
 async function generateHandoff(cwd, changeName = CHANGE_NAME) {
   const bash = findBashCommand();
-  if (!bash) throw new Error('Bash or Git Bash is required to generate Comet handoff context');
-  const script = path.join(REPO_ROOT, 'assets', 'skills', 'comet', 'scripts', 'comet-handoff.sh');
+  if (!bash) throw new Error('Bash or Git Bash is required to generate ZCW handoff context');
+  const script = path.join(REPO_ROOT, 'assets', 'skills', 'zcw', 'scripts', 'zcw-handoff.sh');
   await spawnCapture(bash.command, [toBashPath(script, bash.pathStyle), changeName, 'design', '--write'], { cwd });
 }
 
 async function writeSyntheticHandoff(root, mode, tier) {
   const syntheticLines = { small: 4, medium: 40, large: 140 }[tier] ?? 4;
   const retainedLines = mode === 'beta' ? Math.ceil(syntheticLines / 3) : syntheticLines;
-  const handoffDir = path.join(root, 'openspec', 'changes', CHANGE_NAME, '.comet', 'handoff');
+  const handoffDir = path.join(root, 'openspec', 'changes', CHANGE_NAME, '.zcw', 'handoff');
   await fs.mkdir(handoffDir, { recursive: true });
   const contextName = mode === 'beta' ? 'spec-context' : 'design-context';
   await fs.writeFile(
     path.join(handoffDir, `${contextName}.md`),
     [
-      mode === 'beta' ? '# Comet Spec Context' : '# Comet Design Handoff',
+      mode === 'beta' ? '# ZCW Spec Context' : '# ZCW Design Handoff',
       '', `- Change: ${CHANGE_NAME}`, '- Phase: design',
       `- Mode: ${mode === 'beta' ? 'beta' : 'compact'}`, '',
       ...Array.from({ length: retainedLines }, (_, i) =>
@@ -318,7 +318,7 @@ async function writeSyntheticHandoff(root, mode, tier) {
 async function measureContext(root, mode) {
   const contextName = mode === 'beta' ? 'spec-context.md' : 'design-context.md';
   const content = await fs.readFile(
-    path.join(root, 'openspec', 'changes', CHANGE_NAME, '.comet', 'handoff', contextName), 'utf-8',
+    path.join(root, 'openspec', 'changes', CHANGE_NAME, '.zcw', 'handoff', contextName), 'utf-8',
   );
   return { chars: content.length, lines: content.split(/\r?\n/).length, approxTokens: Math.ceil(content.length / 4) };
 }
@@ -334,7 +334,7 @@ async function measureL3Context(root, mode, tier) {
 
 async function readHandoffContext(root, mode, changeName = CHANGE_NAME) {
   const contextFile = mode === 'beta' ? 'spec-context.md' : 'design-context.md';
-  const contextPath = path.join(root, 'openspec', 'changes', changeName, '.comet', 'handoff', contextFile);
+  const contextPath = path.join(root, 'openspec', 'changes', changeName, '.zcw', 'handoff', contextFile);
   const contextText = await fs.readFile(contextPath, 'utf-8');
   return { contextFile, contextText };
 }
@@ -343,10 +343,10 @@ async function readHandoffContext(root, mode, changeName = CHANGE_NAME) {
 
 function buildDesignPrompt(mode, contextFile, contextText) {
   return [
-    'You are a senior engineer running a Comet design phase benchmark.',
+    'You are a senior engineer running a ZCW design phase benchmark.',
     `Mode: ${mode} | Context source: ${contextFile}`,
     '',
-    'Read the Comet handoff context below. Then produce a Design Doc that:',
+    'Read the ZCW handoff context below. Then produce a Design Doc that:',
     '1. Summarizes the problem and goals (from proposal)',
     '2. Lists architectural decisions (from design)',
     '3. Maps each spec requirement to a concrete implementation approach',
@@ -361,9 +361,9 @@ function buildDesignPrompt(mode, contextFile, contextText) {
     'decisionsCount = architectural decisions made,',
     'risksIdentified = risks/edge cases found.',
     '',
-    '<comet_handoff_context>',
+    '<zcw_handoff_context>',
     contextText,
-    '</comet_handoff_context>',
+    '</zcw_handoff_context>',
   ].join('\n');
 }
 
@@ -414,10 +414,10 @@ async function runL1({ claudeCommand, model, cwd, mode, contextFile, contextText
 
 function buildBuildPrompt(mode, contextFile, contextText) {
   return [
-    'You are implementing a note-board module for a Comet build phase benchmark.',
+    'You are implementing a note-board module for a ZCW build phase benchmark.',
     `Mode: ${mode} | Context source: ${contextFile}`,
     '',
-    'Read the spec acceptance criteria from the Comet handoff context below.',
+    'Read the spec acceptance criteria from the ZCW handoff context below.',
     '',
     'TASK:',
     '1. Implement src/note-board.js that exports a NoteBoard class with methods:',
@@ -427,9 +427,9 @@ function buildBuildPrompt(mode, contextFile, contextText) {
     '2. Do NOT modify tests/note-board.test.js',
     '3. Run `npx vitest run` to verify. Fix failures until all tests pass.',
     '',
-    '<comet_handoff_context>',
+    '<zcw_handoff_context>',
     contextText,
-    '</comet_handoff_context>',
+    '</zcw_handoff_context>',
   ].join('\n');
 }
 
@@ -1210,14 +1210,14 @@ The dictionary MUST include deprecated entries in getByCategory results.
 async function createL3Fixture(root, mode, tier) {
   const changeDir = path.join(root, 'openspec', 'changes', L3_CHANGE_NAME);
   await fs.rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-  await fs.mkdir(path.join(root, '.comet'), { recursive: true });
+  await fs.mkdir(path.join(root, '.zcw'), { recursive: true });
   await fs.mkdir(path.join(root, 'src'), { recursive: true });
   await fs.mkdir(path.join(root, 'tests'), { recursive: true });
   await fs.mkdir(path.join(changeDir, 'specs', 'dictionary'), { recursive: true });
-  await fs.writeFile(path.join(root, '.comet', 'config.yaml'), `context_compression: ${mode}\n`);
+  await fs.writeFile(path.join(root, '.zcw', 'config.yaml'), `context_compression: ${mode}\n`);
 
   // OpenSpec change artifacts
-  await fs.writeFile(path.join(changeDir, '.comet.yaml'), [
+  await fs.writeFile(path.join(changeDir, '.zcw.yaml'), [
     'workflow: full', 'phase: open', `context_compression: ${mode}`,
     'build_mode: null', 'build_pause: null', 'subagent_dispatch: null',
     'tdd_mode: null', 'isolation: null', 'verify_mode: null',
@@ -1354,9 +1354,9 @@ function buildL3BuildPrompt(mode, contextFile, contextText, tier) {
     '2. Do NOT modify tests/dictionary.test.js',
     `3. Run \`npx vitest run\` to verify. Fix failures until all ${testCount} tests pass.`,
     '',
-    '<comet_handoff_context>',
+    '<zcw_handoff_context>',
     contextText,
-    '</comet_handoff_context>',
+    '</zcw_handoff_context>',
   ].join('\n');
 }
 
@@ -1414,7 +1414,7 @@ async function runL3Build({ claudeCommand, model, cwd, mode, contextFile, contex
 /**
  * L3 Full Workflow: Design → Handoff → Build.
  * 1. Claude produces Design Doc from spec
- * 2. comet-handoff.sh compresses context (off=full excerpts, beta=spec-only projection)
+ * 2. zcw-handoff.sh compresses context (off=full excerpts, beta=spec-only projection)
  * 3. Claude reads compressed handoff → implements → tests
  */
 async function runL3({ claudeCommand, model, cwd, mode, tier, maxRetries }) {
@@ -1422,7 +1422,7 @@ async function runL3({ claudeCommand, model, cwd, mode, tier, maxRetries }) {
   await fs.mkdir(path.join(cwd, 'docs', 'superpowers', 'specs'), { recursive: true });
   const designResult = await runL3Design({ claudeCommand, model, cwd, tier });
 
-  // Generate handoff (real comet-handoff.sh compression)
+  // Generate handoff (real zcw-handoff.sh compression)
   await generateHandoff(cwd, L3_CHANGE_NAME);
 
   // Read compressed handoff context
@@ -1624,7 +1624,7 @@ export function summarizeExecution(results) {
 
 function renderMarkdownReport(report) {
   const lines = [
-    '# Comet Execution Benchmark 报告', '',
+    '# ZCW Execution Benchmark 报告', '',
     `- 生成时间: ${report.generatedAt}`,
     `- Dry run: ${report.dryRun ? '是' : '否'}`,
     `- 测试阶段: ${report.phase}`,
@@ -1758,7 +1758,7 @@ function renderMarkdownReport(report) {
 export async function runExecutionBenchmark(options = {}) {
   const config = {
     phase: options.phase ?? 'both',
-    workspace: path.resolve(options.workspace ?? path.join(REPO_ROOT, '.comet', 'benchmark-runs')),
+    workspace: path.resolve(options.workspace ?? path.join(REPO_ROOT, '.zcw', 'benchmark-runs')),
     repeats: options.repeats ?? 1,
     claudeCommand: options.claudeCommand ?? 'claude',
     model: options.model ?? null,
@@ -1771,7 +1771,7 @@ export async function runExecutionBenchmark(options = {}) {
   const runL2Phase = config.phase === 'l2' || config.phase === 'both' || config.phase === 'all';
   const runL3Phase = config.phase === 'l3' || config.phase === 'all';
 
-  const root = path.join(config.workspace, '.comet', 'benchmark', 'execution');
+  const root = path.join(config.workspace, '.zcw', 'benchmark', 'execution');
   await fs.mkdir(root, { recursive: true });
 
   const results = [];

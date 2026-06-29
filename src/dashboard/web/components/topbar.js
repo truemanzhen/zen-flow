@@ -4,7 +4,7 @@ import { escape } from '../utils.js';
 import { PHASE_LABELS } from './constants.js';
 
 export function renderTopbar({ project, selected }) {
-  document.getElementById('projectName').textContent = project.name || 'Comet Dashboard';
+  document.getElementById('projectName').textContent = project.name || 'ZCW Dashboard';
   document.getElementById('projectPath').textContent = project.path;
 
   const pill = document.getElementById('projectPhasePill');

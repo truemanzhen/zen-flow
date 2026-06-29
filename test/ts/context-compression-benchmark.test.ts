@@ -131,23 +131,23 @@ describe('context compression benchmark runner', () => {
   it('normalizes Windows paths before passing script paths to Bash', async () => {
     const { toBashPath } = await import(benchmarkModule);
 
-    expect(toBashPath('D:\\Project\\Comet\\assets\\skills\\comet\\scripts\\comet-handoff.sh')).toBe(
-      '/d/Project/Comet/assets/skills/comet/scripts/comet-handoff.sh',
+    expect(toBashPath('D:\\Project\\ZCW\\assets\\skills\\zcw\\scripts\\zcw-handoff.sh')).toBe(
+      '/d/Project/ZCW/assets/skills/zcw/scripts/zcw-handoff.sh',
     );
     expect(
       toBashPath(
-        'D:\\Project\\Comet\\assets\\skills\\comet\\scripts\\comet-handoff.sh',
+        'D:\\Project\\ZCW\\assets\\skills\\zcw\\scripts\\zcw-handoff.sh',
         'wsl',
       ),
-    ).toBe('/mnt/d/Project/Comet/assets/skills/comet/scripts/comet-handoff.sh');
-    expect(toBashPath('/tmp/comet-handoff.sh')).toBe('/tmp/comet-handoff.sh');
+    ).toBe('/mnt/d/Project/ZCW/assets/skills/zcw/scripts/zcw-handoff.sh');
+    expect(toBashPath('/tmp/zcw-handoff.sh')).toBe('/tmp/zcw-handoff.sh');
   });
 
   it('places Codex approval flags before the exec subcommand', async () => {
     const { buildCodexArgs } = await import(benchmarkModule);
 
     const args = buildCodexArgs({
-      cwd: 'D:\\Project\\Comet\\.comet\\fixture',
+      cwd: 'D:\\Project\\ZCW\\.zcw\\fixture',
       model: 'gpt-test',
     });
 
@@ -166,7 +166,7 @@ describe('context compression benchmark runner', () => {
     const { runBenchmark } = await import(benchmarkModule);
     const tmpDir = path.join(
       os.tmpdir(),
-      `comet-context-benchmark-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      `zcw-context-benchmark-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
 
     try {
@@ -180,7 +180,7 @@ describe('context compression benchmark runner', () => {
       const report = await fs.readFile(result.reportMarkdownPath, 'utf-8');
       const data = JSON.parse(await fs.readFile(result.reportJsonPath, 'utf-8'));
 
-      expect(report).toContain('# Comet 上下文压缩 Benchmark 报告');
+      expect(report).toContain('# ZCW 上下文压缩 Benchmark 报告');
       expect(report).toContain('## 汇总');
       expect(report).toContain('| 模式 | 平均输入 tokens | 平均输出 tokens | 平均总 tokens | Spec 漂移率 | 任务完成率 | JSON 解析成功率 |');
       expect(report).toContain('## 分档明细');
@@ -199,7 +199,7 @@ describe('context compression benchmark runner', () => {
         fs.stat(
           path.join(
             tmpDir,
-            '.comet',
+            '.zcw',
             'benchmark',
             'context-compression',
             'small',

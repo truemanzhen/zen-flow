@@ -12,7 +12,7 @@ const runTsc = (args = []) => {
   execFileSync(process.execPath, [tscPath, ...args], { stdio: 'inherit' });
 };
 
-console.log('Building Comet...\n');
+console.log('Building ZCW...\n');
 
 if (existsSync('dist')) {
   console.log('Cleaning dist directory...');
