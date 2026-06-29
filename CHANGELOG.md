@@ -2,6 +2,31 @@
 
 All notable changes to @rpamis/comet will be documented in this file.
 
+## What's Changed [0.3.12] - 2026-06-29
+
+### Added
+
+- **Doctor skill reference checks**: `zcw doctor` now validates installed ZCW skill markdown references to `zcw/reference/*.md` and `zcw/rules/*.md`, catching broken project/global skill installs before an agent follows a missing protocol document.
+- **Read-only MCP server**: Added `zcw-mcp`, a stdio MCP server exposing `zcw_status`, `zcw_dashboard_snapshot`, `zcw_change_detail`, and `zcw_doctor` tools with `ZCW_ENABLED_TOOLS` filtering so MCP-capable agents can inspect ZCW workflow state without mutating files or advancing phases.
+
+### Changed
+
+- **English review-mode skill parity**: English ZCW build, verify, hotfix, and subagent dispatch guidance now matches the Chinese `review_mode` semantics for `off`, `standard`, and `thorough`, avoiding divergent review behavior across language installs.
+- **English-only skill distribution**: ZCW now ships and installs only English skill assets. Legacy Chinese-language installs are still detected during update, but refresh to the English `assets/skills/` source; `--language zh` now affects CLI prompts rather than skill asset selection.
+- **Manifest version alignment**: Updated the shipped assets manifest version to match the package release version.
+
+### Fixed
+
+- **Doctor `.zcw.yaml` field validation**: `zcw doctor` now accepts the current state-machine fields such as `context_compression`, `build_pause`, `subagent_dispatch`, `tdd_mode`, `review_mode`, `auto_transition`, command overrides, and handoff metadata instead of reporting valid states as unknown fields.
+
+### Removed
+
+- **Chinese skill asset tree**: Removed `assets/skills-zh/` and the duplicate `.en.md` phase-guard rule copy so the package has a single skill source of truth.
+
+### Tests
+
+- **Workflow contract coverage**: Added regression coverage for current `.zcw.yaml` doctor validation, installed skill reference checks, English `review_mode` dispatch parity, legacy Chinese install refresh to English skill assets, and read-only MCP tool behavior.
+
 ## What's Changed [0.3.11] - 2026-06-24
 
 ### Added

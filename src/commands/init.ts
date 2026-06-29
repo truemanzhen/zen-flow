@@ -51,7 +51,7 @@ type ComponentPlan = {
 
 const LANGUAGES: LanguageConfig[] = [
   { id: 'en', name: 'English', skillsDir: 'skills' },
-  { id: 'zh', name: '中文', skillsDir: 'skills-zh' },
+  { id: 'zh', name: '中文', skillsDir: 'skills' },
 ];
 
 const ZCW_BANNER = [`  ZEN FLOW`, `  Spec Kit + Superpowers workflow automation`].join('\n');

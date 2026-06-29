@@ -182,17 +182,16 @@ src/
 
 ## 新增或更新 Skill
 
-1. 先在 `assets/skills-zh/` 编写或更新中文版本。
+1. 在 `assets/skills/` 编写或更新英文版 skill。
 2. 确认措辞与行为。
-3. 再同步 `assets/skills/` 下的英文版本。
-4. 新增 Skill 时同步加入 `assets/manifest.json`。
-5. 视情况补充生成资产或安装行为的测试。
+3. 新增 Skill 时同步加入 `assets/manifest.json`。
+4. 视情况补充生成资产或安装行为的测试。
 
 Skill 设计建议：
 
 - **Decision Core first**：面向 Agent 的决策说明放在顶部，包括阶段检测、分发逻辑、错误处理。
 - **Reference Appendix**：字段说明、脚本位置、最佳实践放在底部。
-- 中文和英文版本要保持行为等价，表达可以自然不同。
+- ZCW 只发行英文版 skill 资产。CLI 可以本地化提示语，但 skill 内容和安装的 rules 应保持英文。
 
 ## Shell 脚本
 

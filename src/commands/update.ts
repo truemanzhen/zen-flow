@@ -46,7 +46,9 @@ interface DetectTargetsOptions {
 }
 
 function languageToSkillsDir(language: string | undefined, fallback: SkillLanguage): string {
-  return (language ?? fallback) === 'zh' ? 'skills-zh' : 'skills';
+  void language;
+  void fallback;
+  return 'skills';
 }
 
 function getScopedBaseDir(

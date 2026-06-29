@@ -76,7 +76,7 @@ Check `auto_transition` to decide whether to continue:
 
 ### 2. Direct Build (preset build)
 
-Use hotfix defaults: `build_mode: direct`. Skip Superpowers `brainstorming` and `writing-plans` (unless tasks > 3; if exceeds 3 tasks, transfer to `/zcw-build`'s plan and execution method selection — note this does NOT trigger full workflow upgrade, only switches execution method).
+Use hotfix defaults: `build_mode: direct`, default `review_mode: off`. Skip Superpowers `brainstorming` and `writing-plans` (unless tasks > 3; if exceeds 3 tasks, transfer to `/zcw-build`'s plan and execution method selection — note this does NOT trigger full workflow upgrade, only switches execution method).
 
 Before continuing or starting changes, handle uncommitted changes through `zcw/reference/dirty-worktree.md`. If attribution shows the fix scope exceeds hotfix, handle it through this file's "Upgrade Conditions".
 
@@ -125,7 +125,7 @@ Reuse `/zcw-verify`, with zcw-verify's scale assessment deciding lightweight or 
 
 **Immediately execute:** Use the Skill tool to load the `zcw-verify` skill. Skipping this step is prohibited.
 
-Small-scale hotfixes without delta spec usually meet lightweight verification conditions (≤ 3 tasks, ≤ 2 files), zcw-verify's scale assessment will select the lightweight verification path (6 quick checks, including lightweight code review). If hotfix created delta spec, enter full verification path according to zcw-verify's scale assessment rules.
+Small-scale hotfixes without delta spec usually meet lightweight verification conditions (≤ 3 tasks, ≤ 2 files), zcw-verify's scale assessment will select the lightweight verification path (6 quick checks, including code review strategy; default `review_mode: off` does not automatically dispatch code review). If the user wants additional review, run `"$ZCW_BASH" "$ZCW_STATE" set <name> review_mode standard` or `thorough` before verification. If hotfix created delta spec, enter full verification path according to zcw-verify's scale assessment rules.
 
 After verification passes, record `.zcw.yaml` `verify_result` as `pass` according to `/zcw-verify` rules, must not skip this status before archiving. After verification passes, still enter `/zcw-archive`'s final archive confirmation; do not automatically run the archive script.
 

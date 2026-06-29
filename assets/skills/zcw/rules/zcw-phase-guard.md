@@ -1,125 +1,123 @@
-# ZCW 阶段感知（防漂移规则）
+# ZCW Phase Awareness (Anti-Drift Rules)
 
-> 此规则每轮注入，防止长上下文时遗忘 ZCW 流程状态。
-> Hook 平台额外执行 `zcw-hook-guard.sh` 进行硬性拦截；
-> 此 Rule 是所有平台通用的软性防线。
+> This rule is injected every round to prevent forgetting ZCW workflow state during long context.
+> The Hook platform additionally executes `zcw-hook-guard.sh` for hard interception;
+> this Rule is a universal soft defense line for all platforms.
 
-## 全局规则
+## Global Rules
 
-### 阶段感知（最高优先级）
+### Phase Awareness (Highest Priority)
 
-有活跃 zcw change 时（`specs/<name>/.zcw.yaml` 存在），**每次开始执行操作前**必须读取 `phase` 字段确认当前阶段。
+When there is an active zcw change (`specs/<name>/.zcw.yaml` exists), **before starting any operation** you must read the `phase` field to confirm the current phase.
 
-**阶段与允许操作：**
+**Phases and allowed operations:**
 
-| 阶段 | 允许 | 禁止 |
-|------|------|------|
-| `open` | 创建 proposal/design/tasks, 运行 guard | 写源代码 |
-| `design` | brainstorming, 创建 Design Doc, 运行 guard | 写源代码 |
-| `build` | 写源代码、测试、执行计划 | 跳过用户确认点 |
-| `verify` | 验证、branch handling | 跳过失败处理 |
-| `archive` | 确认归档、运行归档脚本 | 写源代码 |
+| Phase | Allowed | Prohibited |
+|-------|---------|------------|
+| `open` | Create proposal/design/tasks, run guard | Write source code |
+| `design` | brainstorming, create Design Doc, run guard | Write source code |
+| `build` | Write source code, tests, execute plans | Skip user confirmation points |
+| `verify` | Verification, branch handling | Skip failure handling |
+| `archive` | Confirm archive, run archive script | Write source code |
+### Phase-Entry Self-Consistency Check (Before Writing Source Code)
 
-### 阶段进入自洽性校验（写源代码前必查）
+Reading the `phase` field alone is not enough — you must also confirm **how** that phase was reached. Before writing any source code, self-check whether `.zcw.yaml` is in an **illegal jump** state (a prior phase was skipped) using the table below. If any row matches, immediately stop writing source code, go back to the corresponding phase to fill the missing artifact, and do not trust the `phase` field to keep going.
 
-仅看 `phase` 字段不够——还必须确认"是如何到达这个阶段的"。每次准备写源代码前，先用下表自检 `.zcw.yaml` 是否处于**非法空跳**状态（绕过了前置阶段）。命中任一行，立即停止写源代码，按动作回到对应阶段补齐产物，不得信任 `phase` 字段直接续跑。
+| Detected | Verdict | Action |
+|----------|---------|--------|
+| `phase: build` + `workflow: full` + `design_doc` empty/null | Skipped design | Stop writing source; run `/zcw-design` to create the Design Doc and pass guard |
+| `phase: build/verify` + any of proposal/design/tasks missing or empty | Skipped open | Return to `/zcw-open` to fill the three artifacts |
+| `phase: archive` + `verify_result` ≠ `pass` | Skipped verify | Return to `/zcw-verify` to complete verification |
 
-| 检测到 | 判定 | 动作 |
-|--------|------|------|
-| `phase: build` + `workflow: full` + `design_doc` 为空/null | 绕过 design 空跳 | 停止写源代码，运行 `/zcw-design` 补 Design Doc 并过 guard |
-| `phase: build/verify` + proposal/design/tasks 任一缺失或为空 | 绕过 open 空跳 | 回 `/zcw-open` 补齐三件套 |
-| `phase: archive` + `verify_result` ≠ `pass` | 绕过 verify 空跳 | 回 `/zcw-verify` 完成验证 |
+Exception: `workflow: hotfix/tweak` intentionally skips design, so an empty `design_doc` is normal and not an illegal jump.
+### Skill Invocation (Cannot Replace with Normal Conversation)
 
-预设例外：`workflow: hotfix/tweak` 本就跳过 design，`design_doc` 为空属正常，不算非法。
+The following operations must be loaded through the Skill tool. When Skill is unavailable, stop the workflow and prompt to install:
 
-### Skill 调用（不可用普通对话替代）
+- **brainstorming** — design phase, build phase medium-scale spec changes
+- **writing-plans** — build phase creating implementation plans
+- **executing-plans** / **subagent-driven-development** — build phase execution
+- **test-driven-development** — in `executing-plans`, the main session loads it before the first task; in `subagent-driven-development`, each background implementer and fix agent loads it
+- **systematic-debugging** — when encountering crashes/test failures/build failures
+- **verification-before-completion** — verify phase
+- **using-git-worktrees** — build phase when selecting worktree isolation
 
-以下操作必须通过 Skill 工具加载，Skill 不可用时应停止流程并提示安装：
+### Script Execution (Cannot Skip)
 
-- **brainstorming** — design 阶段、build 阶段中等规模 spec 变更
-- **writing-plans** — build 阶段创建实现计划
-- **executing-plans** / **subagent-driven-development** — build 阶段执行
-- **test-driven-development** — `executing-plans` 由主会话在第一个 task 前加载；`subagent-driven-development` 由每个后台 implementer 和修复 agent 加载
-- **systematic-debugging** — 遇到崩溃/测试失败/构建失败时
-- **verification-before-completion** — verify 阶段
-- **using-git-worktrees** — build 阶段选择 worktree 隔离时
+- **Phase exit**: `zcw-guard <name> <phase> --apply` (must see ALL CHECKS PASSED)
+- **Compression recovery**: `zcw-state check <name> <phase> --recover`
+- **State update**: After key operations, update fields through `zcw-state set`; manually editing .zcw.yaml is prohibited
+- **Phase advancement only via guard/transition**: directly running `zcw-state set <name> phase <value>` to jump phases is prohibited (it bypasses evidence checks and the script now hard-blocks it); use the `ZCW_FORCE_PHASE=1` escape hatch only to repair a malformed state
+- **handoff generation**: `zcw-handoff <name> design --write` (handwriting summaries is prohibited)
 
-### 脚本执行（不可跳过）
+### User Confirmation (Cannot Auto-Skip)
 
-- **阶段退出**: `zcw-guard <name> <phase> --apply`（必须看到 ALL CHECKS PASSED）
-- **压缩恢复**: `zcw-state check <name> <phase> --recover`
-- **状态更新**: 关键操作后通过 `zcw-state set` 更新字段，禁止手工编辑 .zcw.yaml
-- **阶段推进只能经 guard/transition**: 禁止用 `zcw-state set <name> phase <值>` 手动跳阶段（会绕过证据校验，脚本已硬拦截）；确需修复畸形状态时才用 `ZCW_FORCE_PHASE=1` 逃生阀
-- **handoff 生成**: `zcw-handoff <name> design --write`（禁止手写摘要）
+The following decision points must pause to wait for explicit user selection; do not auto-fill based on recommendation rules:
 
-### 用户确认（不可自动跳过）
+- **open**: Requirements clarification completion confirmation, artifact review confirmation
+- **design**: brainstorming proposal confirmation (Design Doc cannot be created before confirmation)
+- **build**: plan-ready pause, isolation/build_mode/tdd_mode selection, spec large-scale change confirmation
+- **verify**: Verification failure handling strategy, branch handling selection
+- **archive**: Final confirmation before archiving
 
-以下决策点必须暂停等待用户明确选择，不得根据推荐规则自动填写：
+## Design Phase Specifics
 
-- **open**: 需求澄清完成确认、artifact 评审确认
-- **design**: brainstorming 方案确认（确认前不得创建 Design Doc）
-- **build**: plan-ready 暂停、isolation/build_mode/tdd_mode 选择、spec 大规模变更确认
-- **verify**: 验证失败处理策略、branch handling 选择
-- **archive**: 归档前最终确认
+1. First script operation = `zcw-handoff <name> design --write` (loading brainstorming before generating handoff is prohibited)
+2. brainstorming in progress: incrementally update brainstorm-summary.md (update recovery checkpoint after each clarification round or proposal iteration; unconfirmed content marked as pending/candidate)
+3. After brainstorming completes, next step = brainstorm-summary.md finalization → Design Doc → guard
+4. active compaction gate: after brainstorm-summary.md is finalized and before creating Design Doc, prioritize triggering host platform's native context compression; when programmatic triggering is unavailable, pause to prompt user to manually compress or confirm continuing
+5. **Absolutely cannot start writing implementation code directly** — must first create Design Doc and pass guard
 
-## Design 阶段专项
+## Build Phase Specifics
 
-1. 第一个脚本操作 = `zcw-handoff <name> design --write`（未生成 handoff 禁止加载 brainstorming）
-2. brainstorming in progress: incrementally update brainstorm-summary.md（每轮澄清或方案迭代后增量更新恢复检查点，未确认内容标注为待确认/候选）
-3. brainstorming 完成后下一步 = brainstorm-summary.md 定稿 → Design Doc → guard
-4. active compaction gate: brainstorm-summary.md 定稿后、创建 Design Doc 前，优先触发宿主平台原生上下文压缩；无法程序化触发时暂停提示用户手动压缩或确认继续
-5. **绝对不能直接开始写实现代码** — 必须先创建 Design Doc 并通过 guard
+1. After plan creation, must ask user to choose continue or pause (`build_pause` mechanism)
+2. After each task acceptance, must: tasks.md checkmark → git commit (do not accumulate). `subagent-driven-development` must wait for both spec compliance and code quality reviews to pass, then the coordinator performs targeted verification by unique task text; do not use an incomplete task summary table to replace current task verification
+3. When encountering failures, must load **systematic-debugging** skill; do not propose source code fixes before root cause is located
+4. spec change grading: small changes edit directly | medium changes load brainstorming | large changes pause and wait for user confirmation to split
 
-## Build 阶段专项
+## Verify Phase Specifics
 
-1. plan 创建后必须询问用户选择继续或暂停（`build_pause` 机制）
-2. 每个 task 验收后必须: tasks.md 打勾 → git commit（不得积攒）。`subagent-driven-development` 必须等 spec compliance 与 code quality 两个审查都通过，再由协调者按任务唯一文本定向勾选和验证；不得用未完成任务总表代替当前任务验证
-3. 遇到失败必须加载 **systematic-debugging** skill，根因未定位前不得提出源码修复
-4. spec 变更分级: 小改直接编辑 | 中改加载 brainstorming | 大改暂停等用户确认拆分
+1. First step run `zcw-state scale <name>` to determine verification level
+2. After verification fails, list failed items and wait for user selection; CRITICAL must be fixed
+3. After 3 consecutive failures, must let user choose to accept deviation or continue fixing
 
-## Verify 阶段专项
+## Context Compression Recovery
 
-1. 第一步运行 `zcw-state scale <name>` 确定验证级别
-2. 验证失败后列出失败项等用户选择，CRITICAL 必须修
-3. 连续 3 次失败后必须让用户选择接受偏差或继续修
-
-## 上下文压缩恢复
-
-如果怀疑发生上下文压缩（之前对话被摘要、找不到之前讨论的内容），立即运行：
+If context compression is suspected (previous conversation was summarized, previous discussion cannot be found), immediately run:
 
 ```bash
 "$ZCW_BASH" "$ZCW_STATE" check <name> <phase> --recover
 ```
 
-按脚本输出的 **Recovery action** 决定下一步。
+Decide next step according to the script's **Recovery action** output.
 
-恢复后必须先用「阶段进入自洽性校验」表复查一遍：若发现 `phase` 与产物不自洽（design_doc/三件套/verify_result 任一不匹配），按非法空跳处理，回对应阶段补齐，不得信任 `phase` 字段直接续跑。
+After recovery, first re-run the "Phase-Entry Self-Consistency Check" table: if `phase` is inconsistent with the artifacts (design_doc / three artifacts / verify_result mismatch), treat it as an illegal jump, return to the corresponding phase to fill the gap, and do not trust the `phase` field to keep going.
 
-**特别注意 `build_mode`**：若恢复脚本输出 `build_mode: subagent-driven-development`，你是协调者，不是执行者。必须：
-1. 使用 Skill 工具重新加载 Superpowers `subagent-driven-development` 技能 (Use the Skill tool to reload the Superpowers `subagent-driven-development` skill)
-2. 读取 `zcw/reference/subagent-dispatch.md` 获取 ZCW 专属扩展 (re-read `zcw/reference/subagent-dispatch.md` for ZCW-specific extensions)
-3. 读取 `specs/<name>/.zcw/subagent-progress.md` 恢复精确阶段、证据和审查-修复轮次 (Read `specs/<name>/.zcw/subagent-progress.md` to recover the exact stage, evidence, and review-fix round)
-4. 禁止在主会话中直接执行 task (Do not execute the pending task directly in the main window)
-5. 按检查点恢复；缺失或不匹配时才从第一个未勾选 task 开始
-6. 已提交但未通过双审查的 task 保持未勾选，继续审查/修复循环
-7. task 通过双审查和定向勾选验证后立即继续下一个 task，不得总结或询问是否继续
+**Special attention to `build_mode`**: If recovery script outputs `build_mode: subagent-driven-development`, you are the coordinator, not the executor. Must:
+1. Use the Skill tool to reload the Superpowers `subagent-driven-development` skill
+2. Re-read `zcw/reference/subagent-dispatch.md` for ZCW-specific extensions
+3. Read `specs/<name>/.zcw/subagent-progress.md` to recover the exact stage, evidence, and review-fix round
+4. Do not execute tasks directly in the main session
+5. Resume from the checkpoint; start from the first unchecked task only when it is missing or mismatched
+6. Already committed but not yet passed both reviews tasks remain unchecked; continue review/fix loop
+7. After dual review and targeted checkoff verification pass, immediately continue to the next task without summarizing or asking whether to continue
 
-## 阶段退出后自动过渡
+## Automatic Transition After Phase Exit
 
-guard `--apply` 成功后，不得在本规则中硬编码下一阶段 skill。必须先运行：
+After guard `--apply` succeeds, do not hardcode the next skill in this rule. First run:
 
 ```bash
 zcw-state next <change-name>
 ```
 
-若已通过 `zcw-env.sh` 定位脚本，等价运行：
+If `zcw-env.sh` has already located the scripts, the equivalent command is:
 
 ```bash
 "$ZCW_BASH" "$ZCW_STATE" next <change-name>
 ```
 
-按脚本输出决定下一步：
+Decide the next step from the script output:
 
-- `NEXT: auto` → 使用 Skill 工具加载 `SKILL` 指向的 skill
-- `NEXT: manual` → 不加载下一 skill，按 `HINT` 提示用户手动继续
-- `NEXT: done` → 流程已完成，无需继续
+- `NEXT: auto` → use the Skill tool to load the skill named by `SKILL`
+- `NEXT: manual` → do not load the next skill; show `HINT` so the user can continue manually
+- `NEXT: done` → the workflow is complete; no further action is needed

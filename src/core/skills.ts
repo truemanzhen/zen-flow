@@ -34,16 +34,30 @@ description: Run the {skillName} Zen Flow workflow
 `;
 
 const PI_COMMAND_EXTENSION_FILE = 'zcw-commands.ts';
+const DEFAULT_SKILLS_DIR = 'skills';
 
 function getAssetsDir(): string {
   return path.resolve(__dirname, '..', '..', 'assets');
+}
+
+async function resolveSkillAssetPath(
+  assetsDir: string,
+  languageSkillsDir: string,
+  skillRelPath: string,
+): Promise<string> {
+  const preferredPath = path.join(assetsDir, languageSkillsDir, skillRelPath);
+  if (languageSkillsDir === DEFAULT_SKILLS_DIR || (await fileExists(preferredPath))) {
+    return preferredPath;
+  }
+
+  return path.join(assetsDir, DEFAULT_SKILLS_DIR, skillRelPath);
 }
 
 async function copyZCWSkillsForPlatform(
   baseDir: string,
   platform: Platform,
   overwrite: boolean,
-  languageSkillsDir: string = 'skills',
+  languageSkillsDir: string = DEFAULT_SKILLS_DIR,
   scope: InstallScope = 'project',
 ): Promise<{ copied: number; skipped: number }> {
   const assetsDir = getAssetsDir();
@@ -62,9 +76,9 @@ async function copyZCWSkillsForPlatform(
 
   for (const skillRelPath of manifest.skills) {
     const isScript = skillRelPath.includes('/scripts/');
-    const sourceDir = isScript ? 'skills' : languageSkillsDir;
-
-    const src = path.join(assetsDir, sourceDir, skillRelPath);
+    const src = isScript
+      ? path.join(assetsDir, DEFAULT_SKILLS_DIR, skillRelPath)
+      : await resolveSkillAssetPath(assetsDir, languageSkillsDir, skillRelPath);
     const dest = path.join(baseDir, getPlatformSkillsDir(platform, scope), 'skills', skillRelPath);
 
     if (!overwrite && (await fileExists(dest))) {
@@ -223,10 +237,7 @@ async function createOpenCodeCommands(
     }
 
     await ensureDir(path.dirname(dest));
-    let skillSourcePath = path.join(assetsDir, languageSkillsDir, skillPath);
-    if (!(await fileExists(skillSourcePath))) {
-      skillSourcePath = path.join(assetsDir, 'skills', skillPath);
-    }
+    const skillSourcePath = await resolveSkillAssetPath(assetsDir, languageSkillsDir, skillPath);
     const skillBody = stripFrontmatter(await readFile(skillSourcePath, 'utf-8'));
     const content = `${OPENCODE_COMMAND_HEADER.replace('{skillName}', skillName)}
 Equivalent Zen Flow skill: \`${skillName}\`

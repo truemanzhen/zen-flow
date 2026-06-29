@@ -99,7 +99,7 @@ practice. The ZCW project can serve as a reference:
   fields, verification evidence, and archive conditions before allowing the workflow to advance.
 
 - **How to distribute and install Skills across platforms** — ZCW supports multiple AI coding platforms,
-  project/global installation, Chinese/English Skill choices, and platform-specific directory differences such as
+  project/global installation, English-only ZCW Skill assets, and platform-specific directory differences such as
   Antigravity using different project-level and global paths. It can be a reference for CLI installers and Skill package
   structure.
 
@@ -131,10 +131,10 @@ zcw init
 
 1. Prompt you to select AI platforms (auto-detects existing configs)
 2. Choose install scope: project-level (current directory) or global (home directory)
-3. Select language for ZCW skills: English or 中文
+3. Select CLI prompt/output language: English or 中文
 4. Select npm dependencies to install/upgrade — [OpenSpec](https://github.com/Fission-AI/OpenSpec) CLI, [Superpowers](https://github.com/obra/superpowers) (via `npx skills add`), and [CodeGraph](https://github.com/colbymchenry/codegraph) CLI. Items not yet detected default to checked; already-installed items default to unchecked so you can opt in to upgrades.
 5. Install the selected dependencies and deploy their skills
-6. Deploy ZCW skills (in your chosen language) to selected platforms
+6. Deploy English ZCW skills to selected platforms
 7. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` working directories for project-scope installs
 
 > [!TIP]
@@ -169,7 +169,7 @@ Initializes OpenSpec, Superpowers, and ZCW skills for selected AI coding platfor
 |---------------------|--------------------------------------------------------------------------------|
 | `--yes`             | Non-interactive mode, auto-select detected platforms (or all if none detected) |
 | `--scope <scope>`   | Install scope: `project` or `global`                                           |
-| `--language <lang>` | Skill language: `en` or `zh` (skips interactive language prompt)              |
+| `--language <lang>` | CLI prompt/output language: `en` or `zh` (ZCW skills are installed in English) |
 | `--skip-existing`   | Skip already installed components                                              |
 | `--overwrite`       | Overwrite already installed components                                         |
 | `--json`            | Output structured JSON                                                         |
@@ -209,6 +209,23 @@ Starts a local HTTP server that displays a visual dashboard with active changes,
 </details>
 
 <details>
+<summary><code>zcw-mcp</code> — Start the read-only ZCW MCP server</summary>
+
+Starts a stdio MCP server for AI clients that support Model Context Protocol.
+The server exposes read-only workflow tools and does not write files or advance phases.
+
+| Tool                     | Description                                      |
+|--------------------------|--------------------------------------------------|
+| `zcw_status`             | Current project summary and next recommendation  |
+| `zcw_dashboard_snapshot` | Dashboard snapshot JSON                          |
+| `zcw_change_detail`      | One change's state, artifacts, and handoff data  |
+| `zcw_doctor`             | Machine-readable doctor checks                   |
+
+Set `ZCW_ENABLED_TOOLS=zcw_status,zcw_doctor` to limit the exposed tools. The default is `all`.
+
+</details>
+
+<details>
 <summary><code>zcw doctor [path]</code> — Diagnose ZCW installation health</summary>
 
 Checks project/global installation health, working directories, installed skills, scripts, and ZCW state files.
@@ -228,7 +245,7 @@ Updates the npm package and refreshes installed ZCW skills in detected project/g
 | Option              | Description                                   |
 |---------------------|-----------------------------------------------|
 | `--json`            | Output npm and skill update results as JSON   |
-| `--language <lang>` | Override detected skill language (`en`, `zh`) |
+| `--language <lang>` | CLI prompt/output language override (`en`, `zh`); refreshed ZCW skills are installed in English |
 | `--scope <scope>`   | Update only `global` or `project` scope       |
 
 </details>

@@ -16,7 +16,7 @@ describe('dashboardCommand --json', () => {
   });
 
   it('prints a single dashboard snapshot and returns', async () => {
-    const changeDir = path.join(tmpDir, 'openspec', 'changes', 'sample');
+    const changeDir = path.join(tmpDir, 'specs', 'sample');
     await fs.mkdir(changeDir, { recursive: true });
     await fs.writeFile(
       path.join(changeDir, '.zcw.yaml'),

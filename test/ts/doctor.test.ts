@@ -24,9 +24,15 @@ describe('doctor command', () => {
       [
         'workflow: full',
         'phase: verify',
+        'context_compression: off',
         'build_mode: executing-plans',
+        'build_pause: null',
+        'subagent_dispatch: null',
+        'tdd_mode: tdd',
+        'review_mode: standard',
         'isolation: branch',
         'verify_mode: full',
+        'auto_transition: true',
         'verify_result: pending',
         'design_doc: specs/current-state/plan.md',
         'plan: specs/current-state/tasks.md',
@@ -34,6 +40,12 @@ describe('doctor command', () => {
         'branch_status: handled',
         'verified_at: null',
         'archived: false',
+        'direct_override: false',
+        'build_command: pnpm build',
+        'verify_command: pnpm test',
+        'handoff_context: specs/current-state/.zcw/spec-context.md',
+        'handoff_hash: abc123',
+        'base_ref: master',
         '',
       ].join('\n'),
     );
@@ -99,6 +111,48 @@ describe('doctor command', () => {
     expect(results.find((result) => result.check === '.zcw.yaml: top-level-invalid')).toMatchObject({
       status: 'fail',
       message: expect.stringContaining('unknown_root_field'),
+    });
+  });
+
+  it('reports missing referenced skill documents in installed skills', async () => {
+    const skillDir = path.join(tmpDir, '.claude', 'skills');
+    await fs.mkdir(path.join(skillDir, 'zcw-build'), { recursive: true });
+    await fs.writeFile(
+      path.join(skillDir, 'zcw-build', 'SKILL.md'),
+      [
+        '---',
+        'name: zcw-build',
+        '---',
+        '',
+        'Read `zcw/reference/decision-point.md` before continuing.',
+        'Read `zcw/reference/missing-contract.md` before continuing.',
+        '',
+      ].join('\n'),
+    );
+    await fs.mkdir(path.join(skillDir, 'zcw', 'reference'), { recursive: true });
+    await fs.writeFile(
+      path.join(skillDir, 'zcw', 'reference', 'decision-point.md'),
+      '# Decision point\n',
+    );
+
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let json = '';
+    try {
+      await doctorCommand(tmpDir, { json: true, scope: 'project' });
+      json = log.mock.calls.map((call) => call.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+    }
+
+    const results = JSON.parse(json).results as Array<{
+      check: string;
+      status: string;
+      message: string;
+    }>;
+
+    expect(results.find((result) => result.check === 'skill references: Claude Code (project)')).toMatchObject({
+      status: 'fail',
+      message: expect.stringContaining('zcw/reference/missing-contract.md'),
     });
   });
 });

@@ -47,9 +47,9 @@ comet-hook-guard.sh ← (独立脚本，由 .claude/settings.local.json 的 PreT
 2. `comet-yaml-validate.sh` — schema 校验 + KNOWN_KEYS
 3. `test/ts/comet-scripts.test.ts` — 测试中的 yaml 字符串
 
-## 双语言 Skill
+## Skill 语言
 
-skill 优化时先写中文版本（`assets/skills-zh/`），用户确认后再修改英文版本（`assets/skills/`）。
+ZCW 只保留英文版 skill 资产，统一维护在 `assets/skills/`。CLI 可以保留中文提示语，但不要新增或恢复 `assets/skills-zh/`。
 
 ## 中文术语翻译规范
 

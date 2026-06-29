@@ -202,8 +202,8 @@ describe('update command helpers', () => {
   });
 
   it('formats the skill update command with scope, platform, and language source', () => {
-    expect(formatSkillUpdateCommand('project', claudePlatform, 'skills-zh')).toBe(
-      'copy assets/skills-zh -> .claude/skills/ (project)',
+    expect(formatSkillUpdateCommand('project', claudePlatform, 'skills')).toBe(
+      'copy assets/skills -> .claude/skills/ (project)',
     );
     expect(formatSkillUpdateCommand('global', claudePlatform, 'skills')).toBe(
       'copy assets/skills -> ~/.claude/skills/ (global)',
@@ -227,7 +227,10 @@ describe('update command helpers', () => {
       log.mockRestore();
     }
 
-    expect(output).toContain('$ copy assets/skills-zh -> .claude/skills/ (project)');
+    expect(output).toContain('$ copy assets/skills -> .claude/skills/ (project)');
+    await expect(
+      fs.readFile(path.join(tmpDir, '.claude', 'skills', 'zcw-open', 'SKILL.md'), 'utf-8'),
+    ).resolves.toContain('# ZCW Phase 1: Open');
   });
 
   it('prints structured JSON when requested', async () => {

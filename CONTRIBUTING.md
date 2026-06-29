@@ -209,11 +209,10 @@ src/
 
 ## Adding or Updating a Skill
 
-1. Write or update the Chinese version first under `assets/skills-zh/`.
+1. Write or update the English skill under `assets/skills/`.
 2. Get the wording and behavior confirmed.
-3. Sync the English version under `assets/skills/`.
-4. Add new skills to `assets/manifest.json`.
-5. Add tests for generated assets or installer behavior when applicable.
+3. Add new skills to `assets/manifest.json`.
+4. Add tests for generated assets or installer behavior when applicable.
 
 Skill design guidance:
 
@@ -221,8 +220,8 @@ Skill design guidance:
   phase detection, dispatch logic, and error handling.
 - **Reference Appendix**: Field reference, script locations, and best practices
   go at the bottom.
-- Keep Chinese and English versions behaviorally equivalent, even when wording
-  differs naturally.
+- ZCW ships English skill assets only. The CLI may localize prompts, but skill
+  content and installed rules should remain English.
 
 ## Shell Scripts
 

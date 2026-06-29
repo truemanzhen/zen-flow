@@ -138,9 +138,9 @@ Plan has been written to the current branch. Before starting execution, **ask th
 - Task count ≤ 2 and no cross-module dependencies → Recommend B
 - From hotfix path → Recommend B
 
-This is a user decision point. **Must follow the `zcw/reference/decision-point.md` protocol to pause and wait for the user to explicitly choose isolation method, execution method, and TDD mode**. Must not choose `branch` or `worktree` based on recommendation rules, and must not choose the execution method or TDD mode based on recommendation rules. Recommendation rules are for suggestion only, not a substitute for user confirmation.
+This is a user decision point. **Must follow the `zcw/reference/decision-point.md` protocol to pause and wait for the user to explicitly choose isolation method, execution method, TDD mode, and code review mode**. Must not choose `branch` or `worktree` based on recommendation rules, and must not choose the execution method, TDD mode, or code review mode based on recommendation rules. Recommendation rules are for suggestion only, not a substitute for user confirmation.
 
-After user selection, update `isolation`, execution method, and TDD mode fields:
+After user selection, update `isolation`, execution method, TDD mode, and code review mode fields:
 
 ```bash
 "$ZCW_BASH" "$ZCW_STATE" set <name> isolation <branch|worktree>
@@ -159,11 +159,23 @@ After user selection, update `isolation`, execution method, and TDD mode fields:
 
 Run `"$ZCW_BASH" "$ZCW_STATE" set <name> tdd_mode <tdd|direct>`
 
+**Code Review Mode**:
+
+| Option | Meaning | Applicable Scenario |
+|--------|---------|---------------------|
+| `off` | Do not automatically dispatch code review | Documentation, configuration, copy, or small low-risk tasks |
+| `standard` | Run one final lightweight code review after tasks complete; if issues are found, automatically fix at most once before handing back to the user | Recommended default for most ordinary changes |
+| `thorough` | Run combined reviews by batch or risk boundary, then one final full review | High-risk, multi-module, architecture, or security-related changes |
+
+Run `"$ZCW_BASH" "$ZCW_STATE" set <name> review_mode <off|standard|thorough>`
+
 `isolation` is a script-enforced hard constraint. Full workflow init may temporarily leave it as `null`, but only before this step. If it remains `null`, both the `build → verify` guard and `zcw-state transition build-complete` will fail.
 
 `subagent_dispatch` is a script-enforced hard constraint. `build_mode: subagent-driven-development` requires `subagent_dispatch: confirmed` before leaving the build phase, otherwise both `zcw-guard.sh build --apply` and `zcw-state transition build-complete` will fail.
 
 `tdd_mode` is a script-enforced hard constraint. Full workflow must have `tdd_mode` selected as `tdd` or `direct` before leaving the build phase, otherwise both `zcw-guard.sh build --apply` and `zcw-state transition build-complete` will fail.
+
+`review_mode` is a script-enforced hard constraint. New full workflows must have `review_mode` selected as `off`, `standard`, or `thorough` before leaving the build phase, otherwise both `zcw-guard.sh build --apply` and `zcw-state transition build-complete` will fail. Older state files without this field remain on the compatibility path, but resume should backfill the field.
 
 `build_mode` defaults to `direct` only for hotfix/tweak presets. Full workflow must not default to `direct`. Use it only when the user explicitly asks to bypass the plan execution skills and you record an explicit override:
 
@@ -214,7 +226,7 @@ If `tdd_mode: direct`: Follow normal flow, no enforced TDD.
 
 **`executing-plans` review gate**:
 
-When `build_mode` is `executing-plans`, after all planned tasks are complete and before running the build → verify phase guard, must use the Skill tool to load the Superpowers `requesting-code-review` skill and request code review at least once.
+When `build_mode` is `executing-plans` and `review_mode` is `standard` or `thorough`, after all planned tasks are complete and before running the build → verify phase guard, must use the Skill tool to load the Superpowers `requesting-code-review` skill and request code review at least once. When `review_mode: off`, skip automatic code review, do not load `requesting-code-review`, and record the skip reason in a verification report draft or tasks.md.
 
 Requirements:
 - the `requesting-code-review` skill must be loaded before `"$ZCW_BASH" "$ZCW_GUARD" <change-name> build --apply`
@@ -270,7 +282,8 @@ Build is the longest phase and may span many tasks. To support resume after cont
 - `isolation` has been written as `branch` or `worktree`
 - `build_mode` has been written as `subagent-driven-development`, `executing-plans`, or `direct` with explicit override; if `subagent-driven-development`, `subagent_dispatch` must be `confirmed`
 - `tdd_mode` has been written as `tdd` or `direct`
-- If `build_mode` is `executing-plans`, the Skill tool has been used to load the Superpowers `requesting-code-review` skill and request code review at least once, and CRITICAL review findings have been fixed or acceptance rationale for non-CRITICAL review findings has been recorded
+- `review_mode` has been written as `off`, `standard`, or `thorough`
+- If `review_mode` is `standard` or `thorough`, code review has completed according to the selected mode, and CRITICAL review findings have been fixed or acceptance rationale for non-CRITICAL review findings has been recorded; if `review_mode: off`, the durable artifacts record why automatic code review was skipped
 - **Phase guard**: Run `"$ZCW_BASH" "$ZCW_GUARD" <change-name> build --apply`; after all PASS, state advances to `phase: verify`
 
 Guard reads project command configuration first:

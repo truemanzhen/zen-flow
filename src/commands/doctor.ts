@@ -1,7 +1,7 @@
 import path from 'path';
 import os from 'os';
 import { execSync } from 'child_process';
-import { promises as fs } from 'fs';
+import { promises as fs, type Dirent } from 'fs';
 import { fileExists, readDir } from '../utils/file-system.js';
 import { isCommandAvailable } from '../core/speckit.js';
 import { hasCodegraphProjectIndex, resolveCodegraphCommand } from '../core/codegraph.js';
@@ -21,17 +21,32 @@ type DoctorScope = InstallScope | 'auto';
 const VALID_YAML_FIELDS = new Set([
   'workflow',
   'phase',
-  'build_mode',
-  'isolation',
-  'verify_mode',
-  'verify_result',
+  'context_compression',
   'design_doc',
   'plan',
+  'build_mode',
+  'build_pause',
+  'subagent_dispatch',
+  'tdd_mode',
+  'review_mode',
+  'isolation',
+  'verify_mode',
+  'auto_transition',
+  'verify_result',
   'verification_report',
   'branch_status',
-  'archived',
   'verified_at',
+  'created_at',
+  'archived',
+  'direct_override',
+  'build_command',
+  'verify_command',
+  'handoff_context',
+  'handoff_hash',
+  'base_ref',
 ]);
+
+const ZCW_DOC_REFERENCE_RE = /\bzcw\/(?:reference|rules)\/[A-Za-z0-9._/-]+\.md\b/gu;
 
 function collectTopLevelYamlKeys(yamlContent: string): string[] {
   const topLevelKeys: string[] = [];
@@ -173,6 +188,96 @@ async function checkSkillCompleteness(
   return results;
 }
 
+async function collectMarkdownFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
+
+  async function walk(dir: string): Promise<void> {
+    let entries: Dirent[];
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        files.push(fullPath);
+      }
+    }
+  }
+
+  await walk(root);
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
+function normalizeRelativePath(from: string, to: string): string {
+  return path.relative(from, to).replace(/\\/g, '/');
+}
+
+function extractZCWDocReferences(content: string): string[] {
+  return Array.from(new Set(content.match(ZCW_DOC_REFERENCE_RE) ?? [])).sort();
+}
+
+async function checkSkillReferences(
+  projectPath: string,
+  scope: DoctorScope,
+): Promise<CheckResult[]> {
+  const results: CheckResult[] = [];
+
+  for (const base of getScopeBases(projectPath, scope)) {
+    for (const platform of PLATFORMS) {
+      const detectedSkillsDir = (
+        await Promise.all(
+          getPlatformSkillsDirs(platform, base.scope).map(async (skillsDir) => ({
+            skillsDir,
+            exists: await fileExists(path.join(base.baseDir, skillsDir, 'skills')),
+          })),
+        )
+      ).find((candidate) => candidate.exists)?.skillsDir;
+      if (!detectedSkillsDir) continue;
+
+      const skillsRoot = path.join(base.baseDir, detectedSkillsDir, 'skills');
+      const markdownFiles = await collectMarkdownFiles(skillsRoot);
+      const missing = new Set<string>();
+
+      for (const markdownFile of markdownFiles) {
+        let content: string;
+        try {
+          content = await fs.readFile(markdownFile, 'utf-8');
+        } catch {
+          continue;
+        }
+
+        for (const reference of extractZCWDocReferences(content)) {
+          if (!(await fileExists(path.join(skillsRoot, reference)))) {
+            missing.add(`${normalizeRelativePath(skillsRoot, markdownFile)} -> ${reference}`);
+          }
+        }
+      }
+
+      const missingList = Array.from(missing).sort();
+      results.push(
+        missingList.length === 0
+          ? {
+              check: `skill references: ${platform.name} (${base.scope})`,
+              status: 'pass' as const,
+              message: `valid (${markdownFiles.length} markdown files)`,
+            }
+          : {
+              check: `skill references: ${platform.name} (${base.scope})`,
+              status: 'fail' as const,
+              message: `missing ${missingList.length}: ${missingList.join(', ')}`,
+            },
+      );
+    }
+  }
+
+  return results;
+}
+
 async function checkScriptsPresent(): Promise<CheckResult> {
   const assetsDir = getAssetsDir();
   const scriptsDir = path.join(assetsDir, 'skills', 'zcw', 'scripts');
@@ -309,6 +414,7 @@ async function collectResults(projectPath: string, scope: DoctorScope): Promise<
     results.push(await checkWorkingDirs(projectPath));
   }
   results.push(...(await checkSkillCompleteness(projectPath, scope)));
+  results.push(...(await checkSkillReferences(projectPath, scope)));
   results.push(await checkScriptsPresent());
   results.push(await checkCodegraph(projectPath, scope));
   results.push(...(await checkZCWYamlValidity(projectPath)));
@@ -317,6 +423,18 @@ async function collectResults(projectPath: string, scope: DoctorScope): Promise<
 
 async function collectReadinessResults(projectPath: string): Promise<CheckResult[]> {
   return [await checkBridgeExtensionAssets(), await checkBridgeState(projectPath)];
+}
+
+async function collectDoctorResults(
+  projectPath: string,
+  scope: DoctorScope = 'auto',
+  readiness = false,
+): Promise<CheckResult[]> {
+  const results = await collectResults(projectPath, scope);
+  if (readiness) {
+    results.push(...(await collectReadinessResults(projectPath)));
+  }
+  return results;
 }
 
 function icon(status: string): string {
@@ -337,10 +455,7 @@ export async function doctorCommand(
 ): Promise<void> {
   const projectPath = path.resolve(targetPath);
   const scope = options.scope ?? 'auto';
-  const results = await collectResults(projectPath, scope);
-  if (options.readiness) {
-    results.push(...(await collectReadinessResults(projectPath)));
-  }
+  const results = await collectDoctorResults(projectPath, scope, Boolean(options.readiness));
 
   if (options.json) {
     console.log(JSON.stringify({ scope, readiness: Boolean(options.readiness), results }, null, 2));
@@ -355,3 +470,6 @@ export async function doctorCommand(
 
   console.log();
 }
+
+export type { CheckResult, DoctorScope };
+export { collectDoctorResults };
