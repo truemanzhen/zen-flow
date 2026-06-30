@@ -97,6 +97,21 @@ async function createChange(tmpDir: string, name: string, yaml: string, tasks = 
   return changeDir;
 }
 
+async function createSpecChange(
+  tmpDir: string,
+  name: string,
+  yaml: string,
+  tasks = '- [x] done\n',
+) {
+  const changeDir = path.join(tmpDir, 'specs', name);
+  await fs.mkdir(changeDir, { recursive: true });
+  await writeFile(path.join(changeDir, '.zcw.yaml'), yaml);
+  await writeFile(path.join(changeDir, 'spec.md'), 'spec\n');
+  await writeFile(path.join(changeDir, 'plan.md'), 'plan\n');
+  await writeFile(path.join(changeDir, 'tasks.md'), tasks);
+  return changeDir;
+}
+
 async function createFakeOpenSpecArchive(tmpDir: string, archiveDateScript = 'date +%Y-%m-%d') {
   const fakeOpenSpec = path.join(tmpDir, 'fake-bin', 'openspec');
   const logFile = path.join(tmpDir, 'fake-bin', 'openspec-args.log');
@@ -147,12 +162,15 @@ describe('zcw shell script contracts', () => {
     const stateSource = await fs.readFile(path.join(scriptsDir, 'zcw-state.sh'), 'utf-8');
 
     expect(stateSource).toContain('cmd_task_checkoff()');
+    expect(stateSource).toContain('cmd_drift_check()');
     expect(stateSource).toContain('validate_path_field "$task_file" "task file"');
     expect(stateSource).toContain('TASK_TEXT="$task_text" awk');
     expect(stateSource).toContain('task text must appear exactly once');
     expect(stateSource).toContain('task is not checked');
     expect(stateSource).toContain('task-checkoff)');
     expect(stateSource).toContain('cmd_task_checkoff "$@"');
+    expect(stateSource).toContain('drift-check)');
+    expect(stateSource).toContain('cmd_drift_check "$@"');
   });
 
   it('keeps zcw-hook-guard blocked messages in English', async () => {
@@ -813,6 +831,176 @@ describeShell('zcw shell scripts', () => {
     expect(result.stderr).toContain('[PASS] design handoff markdown is traceable');
     expect(result.stderr).toContain('[PASS] Design Doc frontmatter links current change');
     expect(result.stderr).toContain('[PASS] Design Doc declares OpenSpec as canonical spec');
+  }, 20_000);
+
+  it('drift-check reports clean artifacts immediately after design handoff', async () => {
+    const handoffScript = path.join(tmpDir, 'scripts', 'zcw-handoff.sh');
+    const changeDir = await createSpecChange(
+      tmpDir,
+      'drift-clean',
+      [
+        'workflow: full',
+        'phase: design',
+        'context_compression: off',
+        'build_mode: null',
+        'build_pause: null',
+        'tdd_mode: null',
+        'isolation: null',
+        'verify_mode: null',
+        'design_doc: null',
+        'plan: null',
+        'verify_result: pending',
+        'verified_at: null',
+        'archived: false',
+        'handoff_context: null',
+        'handoff_hash: null',
+        '',
+      ].join('\n'),
+    );
+    await writeFile(path.join(changeDir, 'specs', 'capability', 'spec.md'), 'delta spec\n');
+
+    const handoff = runBash(tmpDir, handoffScript, ['drift-clean', 'design', '--write']);
+    const result = runBash(tmpDir, stateScript, ['drift-check', 'drift-clean']);
+
+    expect(handoff.status).toBe(0);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('CLEAN:');
+    expect(result.stdout).not.toContain('[DRIFT]');
+  }, 20_000);
+
+  it('drift-check reports changed artifacts without failing by default', async () => {
+    const handoffScript = path.join(tmpDir, 'scripts', 'zcw-handoff.sh');
+    const changeDir = await createSpecChange(
+      tmpDir,
+      'drift-changed',
+      [
+        'workflow: full',
+        'phase: design',
+        'context_compression: off',
+        'build_mode: null',
+        'build_pause: null',
+        'tdd_mode: null',
+        'isolation: null',
+        'verify_mode: null',
+        'design_doc: null',
+        'plan: null',
+        'verify_result: pending',
+        'verified_at: null',
+        'archived: false',
+        'handoff_context: null',
+        'handoff_hash: null',
+        '',
+      ].join('\n'),
+    );
+
+    const handoff = runBash(tmpDir, handoffScript, ['drift-changed', 'design', '--write']);
+    await writeFile(path.join(changeDir, 'spec.md'), 'mutated spec\n');
+    const result = runBash(tmpDir, stateScript, ['drift-check', 'drift-changed']);
+
+    expect(handoff.status).toBe(0);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('[DRIFT]');
+    expect(result.stdout).toContain('DRIFT:');
+    expect(result.stdout).toContain('changed since handoff');
+  }, 20_000);
+
+  it('drift-check exits 3 for changed artifacts in strict mode', async () => {
+    const handoffScript = path.join(tmpDir, 'scripts', 'zcw-handoff.sh');
+    const changeDir = await createSpecChange(
+      tmpDir,
+      'drift-strict',
+      [
+        'workflow: full',
+        'phase: design',
+        'context_compression: off',
+        'build_mode: null',
+        'build_pause: null',
+        'tdd_mode: null',
+        'isolation: null',
+        'verify_mode: null',
+        'design_doc: null',
+        'plan: null',
+        'verify_result: pending',
+        'verified_at: null',
+        'archived: false',
+        'handoff_context: null',
+        'handoff_hash: null',
+        '',
+      ].join('\n'),
+    );
+
+    const handoff = runBash(tmpDir, handoffScript, ['drift-strict', 'design', '--write']);
+    await writeFile(path.join(changeDir, 'spec.md'), 'strict drift\n');
+    const result = runBash(tmpDir, stateScript, ['drift-check', 'drift-strict', '--strict']);
+
+    expect(handoff.status).toBe(0);
+    expect(result.status).toBe(3);
+    expect(result.stdout).toContain('[DRIFT]');
+  }, 20_000);
+
+  it('drift-check reports artifacts removed since handoff', async () => {
+    const handoffScript = path.join(tmpDir, 'scripts', 'zcw-handoff.sh');
+    const changeDir = await createSpecChange(
+      tmpDir,
+      'drift-removed',
+      [
+        'workflow: full',
+        'phase: design',
+        'context_compression: off',
+        'build_mode: null',
+        'build_pause: null',
+        'tdd_mode: null',
+        'isolation: null',
+        'verify_mode: null',
+        'design_doc: null',
+        'plan: null',
+        'verify_result: pending',
+        'verified_at: null',
+        'archived: false',
+        'handoff_context: null',
+        'handoff_hash: null',
+        '',
+      ].join('\n'),
+    );
+
+    const handoff = runBash(tmpDir, handoffScript, ['drift-removed', 'design', '--write']);
+    await fs.rm(path.join(changeDir, 'tasks.md'));
+    const result = runBash(tmpDir, stateScript, ['drift-check', 'drift-removed']);
+
+    expect(handoff.status).toBe(0);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('removed since handoff');
+    expect(result.stdout).toContain('DRIFT:');
+  }, 20_000);
+
+  it('drift-check reports when no design handoff has been recorded', async () => {
+    await createSpecChange(
+      tmpDir,
+      'drift-no-handoff',
+      [
+        'workflow: full',
+        'phase: design',
+        'context_compression: off',
+        'build_mode: null',
+        'build_pause: null',
+        'tdd_mode: null',
+        'isolation: null',
+        'verify_mode: null',
+        'design_doc: null',
+        'plan: null',
+        'verify_result: pending',
+        'verified_at: null',
+        'archived: false',
+        'handoff_context: null',
+        'handoff_hash: null',
+        '',
+      ].join('\n'),
+    );
+
+    const result = runBash(tmpDir, stateScript, ['drift-check', 'drift-no-handoff']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('no design handoff recorded');
   }, 20_000);
 
   it('generates a beta spec projection handoff with verbatim spec content', async () => {

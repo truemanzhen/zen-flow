@@ -33,6 +33,15 @@ import {
   overlayListCommand,
   overlayRemoveCommand,
 } from '../commands/overlay.js';
+import {
+  issueCloseCommand,
+  issueCreateCommand,
+  issueDiscoverCommand,
+  issueListCommand,
+  issueStatusCommand,
+  issueUpdateCommand,
+} from '../commands/issues.js';
+import { analyzeCommand, executeCommand, planCommand } from '../commands/pipeline.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
@@ -72,6 +81,44 @@ program
   .option('--json', 'Output as JSON')
   .action(async (intent, targetPath = '.', options) => {
     await runCommand(intent, targetPath, options);
+  });
+
+program
+  .command('analyze <intent> [path]')
+  .description('Create a structured ZCW analysis artifact with Superpowers bindings')
+  .option('--code', 'Include CodeGraph code search in the analysis')
+  .option('--json', 'Output as JSON')
+  .action(async (intent, targetPath = '.', options) => {
+    await analyzeCommand(intent, targetPath, options);
+  });
+
+program
+  .command('plan [path]')
+  .description('Create a Superpowers-aware ZCW execution plan from analysis or intent')
+  .option('--from <analysis-id>', 'Analysis artifact ID, for example ANL-20260630-abcdef')
+  .option('--intent <intent>', 'Plan directly from a task intent')
+  .addOption(
+    new Option('--execution-mode <mode>', 'Superpowers execution skill').choices([
+      'executing-plans',
+      'subagent-driven-development',
+    ]),
+  )
+  .addOption(new Option('--tdd-mode <mode>', 'TDD mode').choices(['tdd', 'direct']))
+  .addOption(
+    new Option('--review-mode <mode>', 'Code review mode').choices(['off', 'standard', 'thorough']),
+  )
+  .option('--json', 'Output as JSON')
+  .action(async (targetPath = '.', options) => {
+    await planCommand(targetPath, options);
+  });
+
+program
+  .command('execute [path]')
+  .description('Create execution tracking from a ZCW plan artifact')
+  .requiredOption('--from <plan-id>', 'Plan artifact ID, for example PLN-20260630-abcdef')
+  .option('--json', 'Output as JSON')
+  .action(async (targetPath = '.', options) => {
+    await executeCommand(targetPath, options);
   });
 
 program
@@ -353,6 +400,135 @@ overlay
   .option('--json', 'Output as JSON')
   .action(async (skill, targetPath = '.', options) => {
     await overlayApplyCommand(skill, targetPath, options);
+  });
+
+const issue = program.command('issue').description('Manage local ZCW issues');
+
+issue
+  .command('create [path]')
+  .description('Create a local ZCW issue')
+  .requiredOption('--title <title>', 'Issue title')
+  .addOption(
+    new Option('--severity <severity>', 'Issue severity').choices([
+      'critical',
+      'high',
+      'medium',
+      'low',
+    ]),
+  )
+  .addOption(
+    new Option('--source <source>', 'Issue source').choices([
+      'manual',
+      'audit',
+      'test',
+      'review',
+      'discovery',
+    ]),
+  )
+  .option('--priority <priority>', 'Priority from 1 to 5')
+  .option('--phase <phase>', 'Related phase')
+  .option('--milestone <milestone>', 'Related milestone')
+  .option('--description <description>', 'Issue description')
+  .option('--fix-direction <direction>', 'Suggested fix direction')
+  .option('--tag <tag>', 'Tag, repeatable or comma-separated', collect, [])
+  .option('--json', 'Output as JSON')
+  .action(async (targetPath = '.', options) => {
+    await issueCreateCommand(targetPath, options);
+  });
+
+issue
+  .command('list [path]')
+  .description('List local ZCW issues')
+  .addOption(
+    new Option('--status <status>', 'Issue status').choices([
+      'open',
+      'in_progress',
+      'completed',
+      'failed',
+      'deferred',
+    ]),
+  )
+  .addOption(
+    new Option('--severity <severity>', 'Issue severity').choices([
+      'critical',
+      'high',
+      'medium',
+      'low',
+    ]),
+  )
+  .addOption(
+    new Option('--source <source>', 'Issue source').choices([
+      'manual',
+      'audit',
+      'test',
+      'review',
+      'discovery',
+    ]),
+  )
+  .option('--phase <phase>', 'Related phase')
+  .option('--milestone <milestone>', 'Related milestone')
+  .option('--tag <tag>', 'Tag filter, repeatable or comma-separated', collect, [])
+  .option('--all', 'Include closed issue history')
+  .option('--json', 'Output as JSON')
+  .action(async (targetPath = '.', options) => {
+    await issueListCommand(targetPath, options);
+  });
+
+issue
+  .command('status <id> [path]')
+  .description('Show local ZCW issue details')
+  .option('--json', 'Output as JSON')
+  .action(async (id, targetPath = '.', options) => {
+    await issueStatusCommand(id, targetPath, options);
+  });
+
+issue
+  .command('update <id> [path]')
+  .description('Update an active local ZCW issue')
+  .addOption(new Option('--status <status>', 'Issue status').choices(['open', 'in_progress']))
+  .addOption(
+    new Option('--severity <severity>', 'Issue severity').choices([
+      'critical',
+      'high',
+      'medium',
+      'low',
+    ]),
+  )
+  .option('--priority <priority>', 'Priority from 1 to 5')
+  .option('--phase <phase>', 'Related phase')
+  .option('--milestone <milestone>', 'Related milestone')
+  .option('--description <description>', 'Issue description')
+  .option('--fix-direction <direction>', 'Suggested fix direction')
+  .option('--tag <tag>', 'Replace tags, repeatable or comma-separated', collect)
+  .option('--add-tag <tag>', 'Append tag, repeatable or comma-separated', collect)
+  .option('--note <note>', 'Add clarification note')
+  .option('--json', 'Output as JSON')
+  .action(async (id, targetPath = '.', options) => {
+    await issueUpdateCommand(id, targetPath, options);
+  });
+
+issue
+  .command('close <id> [path]')
+  .description('Close an active local ZCW issue and move it to history')
+  .requiredOption('--resolution <resolution>', 'Resolution summary')
+  .addOption(
+    new Option('--status <status>', 'Final issue status').choices([
+      'completed',
+      'failed',
+      'deferred',
+    ]),
+  )
+  .option('--json', 'Output as JSON')
+  .action(async (id, targetPath = '.', options) => {
+    await issueCloseCommand(id, targetPath, options);
+  });
+
+issue
+  .command('discover [path]')
+  .description('Create issues from failing or warning ZCW quality checks')
+  .option('--json', 'Output as JSON')
+  .action(async (targetPath = '.', options) => {
+    await issueDiscoverCommand(targetPath, options);
   });
 
 program

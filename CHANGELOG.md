@@ -2,6 +2,20 @@
 
 All notable changes to @rpamis/comet will be documented in this file.
 
+## What's Changed [0.3.13] - 2026-06-29
+
+### Added
+
+- **工件漂移检测**：新增 `zcw-state.sh drift-check <change-name>` 只读子命令，对照 design handoff 记录的 per-file SHA256 基线，检测 `spec.md` / `plan.md` / `tasks.md` / delta spec 在 handoff 之后是否被改动或删除。delta spec 在 build 阶段本就可编辑，因此默认仅告警（退出码 0），可选 `--strict` 在漂移时返回退出码 3 供 CI 使用。补上了「设计基线漂移而状态机不感知」的可靠性盲区。
+- **Issue 闭环**：新增 `zcw issue` 本地问题管理命令和 `zcw-issue` skill，支持创建、列表、详情、更新、关闭，以及从 `zcw audit` / `zcw test` / `zcw review` 质量产物自动发现非通过检查并写入 `.zcw/issues/*.jsonl`，让质量问题可以持续追踪到 resolution。
+- **Analyze/Plan/Execute 三段式**：新增 `zcw analyze`、`zcw plan`、`zcw execute` 和对应 `zcw-analyze` / `zcw-plan` / `zcw-execute` skill，将任务意图落成 `.zcw/pipeline/` 下的 analysis、plan、execution 产物，并在产物中记录应使用的 Superpowers skill contract，明确 Spec Kit 负责 WHAT、Superpowers 负责 HOW。
+
+### Tests
+
+- **drift-check 覆盖**：新增 handoff 后无改动判 CLEAN、改动 / 删除工件判 DRIFT、`--strict` 退出码、未做 handoff 的提示等回归用例。
+- **Issue 闭环覆盖**：新增本地 issue JSONL 生命周期测试，以及质量产物 discovery 去重测试。
+- **三段式管线覆盖**：新增 analyze → plan → execute 产物生成测试，覆盖知识加载、Superpowers 绑定、执行清单生成和 CLI smoke 路径。
+
 ## What's Changed [0.3.12] - 2026-06-29
 
 ### Added

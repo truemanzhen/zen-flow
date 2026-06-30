@@ -23,6 +23,18 @@ red() { echo -e "\033[31m$1\033[0m" >&2; }
 green() { echo -e "\033[32m$1\033[0m" >&2; }
 yellow() { echo -e "\033[33m$1\033[0m" >&2; }
 
+hash_file() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | awk '{print $1}'
+  else
+    red "ERROR: sha256sum or shasum is required" >&2
+    exit 1
+  fi
+}
+
 # --- Script location ---
 
 # shellcheck disable=SC2034
@@ -1246,6 +1258,63 @@ cmd_next() {
   fi
 }
 
+cmd_drift_check() {
+  local change_name="$1"
+  local strict="${2:-}"
+
+  validate_change_name "$change_name"
+
+  local handoff_json
+  handoff_json=$(cmd_get "$change_name" "handoff_context")
+  if [ -z "$handoff_json" ] || [ "$handoff_json" = "null" ]; then
+    echo "DRIFT: no design handoff recorded for '$change_name' (run /zcw-design handoff first)"
+    return 0
+  fi
+  if [ ! -f "$handoff_json" ]; then
+    echo "DRIFT: handoff context file missing: $handoff_json"
+    return 0
+  fi
+
+  local drift_count=0 clean_count=0 fpath fsha live
+
+  while IFS= read -r line; do
+    case "$line" in
+      *'"path"'*'"sha256"'*) ;;
+      *) continue ;;
+    esac
+    fpath="$(printf '%s\n' "$line" | sed -n 's/.*"path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    fsha="$(printf '%s\n' "$line" | sed -n 's/.*"sha256"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+    [ -n "$fpath" ] || continue
+
+    if [ ! -f "$fpath" ]; then
+      echo "[DRIFT] $fpath: removed since handoff"
+      drift_count=$((drift_count + 1))
+      continue
+    fi
+
+    live="$(hash_file "$fpath")"
+    if [ "$live" != "$fsha" ]; then
+      echo "[DRIFT] $fpath: changed since handoff"
+      drift_count=$((drift_count + 1))
+    else
+      echo "[CLEAN] $fpath"
+      clean_count=$((clean_count + 1))
+    fi
+  done < "$handoff_json"
+
+  if [ "$drift_count" -eq 0 ]; then
+    echo "CLEAN: all $clean_count handoff artifact(s) match the design handoff"
+    return 0
+  fi
+
+  echo "DRIFT: $drift_count artifact(s) changed since design handoff"
+  echo "HINT: delta specs are editable during build; if design intent changed, re-run the design handoff to refresh the baseline"
+  if [ "$strict" = "--strict" ]; then
+    return 3
+  fi
+  return 0
+}
+
 # --- Main ---
 
 SUBCOMMAND="${1:-}"
@@ -1316,6 +1385,13 @@ case "$SUBCOMMAND" in
     fi
     cmd_next "$@"
     ;;
+  drift-check)
+    if [ $# -lt 1 ]; then
+      red "Usage: zcw-state.sh drift-check <change-name> [--strict]" >&2
+      exit 1
+    fi
+    cmd_drift_check "$@"
+    ;;
   *)
     red "Unknown subcommand: $SUBCOMMAND" >&2
     echo "" >&2
@@ -1330,6 +1406,7 @@ case "$SUBCOMMAND" in
     echo "  scale <change-name>             — Assess and set verification mode based on metrics" >&2
     echo "  task-checkoff <file> <task-text> — Verify one unique task is checked" >&2
     echo "  next <change-name>              — Resolve the next workflow step (auto/manual/done)" >&2
+    echo "  drift-check <change-name>       — Compare current artifacts against the design handoff baseline" >&2
     echo "" >&2
     echo "Workflows: full, hotfix, tweak" >&2
     echo "Phases for check: open, design, build, verify, archive" >&2
