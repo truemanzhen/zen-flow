@@ -2,6 +2,16 @@
 
 All notable changes to @rpamis/comet will be documented in this file.
 
+## What's Changed [0.3.14] - 2026-06-30
+
+### Changed
+
+- **Init 默认语言**: `zcw init` 未显式传入 `--language` 时不再询问 CLI 提示/输出语言，默认使用中文；`--language en|zh` 仍可显式覆盖，减少本地启动配置步骤。
+
+### Tests
+
+- **Init 语言默认覆盖**: 新增回归测试，覆盖交互式 init 不触发语言选择 prompt、默认输出中文提示，并校验 `--yes --json` 默认语言切换为中文。
+
 ## What's Changed [0.3.13] - 2026-06-29
 
 ### Added

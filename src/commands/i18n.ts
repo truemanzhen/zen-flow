@@ -5,7 +5,6 @@ export type TranslationKey =
   | 'installScope'
   | 'scopeProject'
   | 'scopeGlobal'
-  | 'languagePrompt'
   | 'selectPlatforms'
   | 'selectedPlatforms'
   | 'noneSelected'
@@ -82,7 +81,6 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     installScope: 'Install scope:',
     scopeProject: 'Project (current directory)',
     scopeGlobal: 'Global (home directory)',
-    languagePrompt: 'CLI prompt/output language:',
     selectPlatforms: 'Select platforms to set up:',
     selectedPlatforms: 'Selected:',
     noneSelected: 'none',
@@ -158,7 +156,6 @@ const TRANSLATIONS: Record<Language, Record<TranslationKey, string>> = {
     installScope: '安装范围：',
     scopeProject: '项目（当前目录）',
     scopeGlobal: '全局（主目录）',
-    languagePrompt: 'CLI 提示/输出语言：',
     selectPlatforms: '选择要配置的平台：',
     selectedPlatforms: '已选择：',
     noneSelected: '无',

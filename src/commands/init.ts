@@ -53,6 +53,7 @@ const LANGUAGES: LanguageConfig[] = [
   { id: 'en', name: 'English', skillsDir: 'skills' },
   { id: 'zh', name: '中文', skillsDir: 'skills' },
 ];
+const DEFAULT_LANGUAGE = LANGUAGES.find((l) => l.id === 'zh') ?? LANGUAGES[0];
 
 const ZCW_BANNER = [`  ZEN FLOW`, `  Spec Kit + Superpowers workflow automation`].join('\n');
 
@@ -71,16 +72,9 @@ async function selectScope(options: InitOptions, lang: string): Promise<InstallS
 
 async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
   if (options.language) {
-    return LANGUAGES.find((l) => l.id === options.language) ?? LANGUAGES[0];
+    return LANGUAGES.find((l) => l.id === options.language) ?? DEFAULT_LANGUAGE;
   }
-  if (options.yes) return LANGUAGES[0];
-
-  const langId = await select({
-    message: t('en', 'languagePrompt'),
-    choices: LANGUAGES.map((lang) => ({ name: lang.name, value: lang.id })),
-  });
-
-  return LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
+  return DEFAULT_LANGUAGE;
 }
 
 async function selectPlatforms(

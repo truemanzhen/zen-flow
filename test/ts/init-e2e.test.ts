@@ -123,7 +123,7 @@ describe('zcw init E2E', () => {
 
     expect(result.projectPath).toBe(tmpDir);
     expect(result.scope).toBe('project');
-    expect(result.language).toBe('en');
+    expect(result.language).toBe('zh');
     expect(result.selectedPlatforms).toContain('claude');
     expect(result.workingDirsCreated).toBe(true);
 
@@ -364,7 +364,7 @@ describe('zcw init E2E', () => {
     expect(output).not.toContain('Installed:\n    OpenCode -> .opencode/skills/');
     expect(output).toContain('Failed:');
     expect(output).toContain('OpenCode (OpenSpec failed)');
-    expect((output.match(/OpenCode \(OpenSpec failed\)/g) ?? [])).toHaveLength(1);
+    expect(output.match(/OpenCode \(OpenSpec failed\)/g) ?? []).toHaveLength(1);
   }, 20_000);
 
   it('installs Pi global skills and commands to the Pi agent directory', async () => {
@@ -490,6 +490,39 @@ describe('zcw init E2E', () => {
     expect(checkbox).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Select npm dependencies to install/upgrade:',
+      }),
+    );
+  });
+
+  it('defaults interactive init to Chinese without prompting for language', async () => {
+    mockExternalSuccess();
+    await fs.mkdir(path.join(tmpDir, '.codex'), { recursive: true });
+
+    const { checkbox, select } = await import('@inquirer/prompts');
+    const { platformSelectPrompt } = await import('../../src/commands/platform-select-prompt.js');
+    vi.mocked(platformSelectPrompt).mockResolvedValue(['codex']);
+    vi.mocked(checkbox).mockResolvedValue([]);
+
+    const { initCommand } = await import('../../src/commands/init.js');
+
+    const result = await captureJsonOutput(() =>
+      initCommand(tmpDir, { json: true, scope: 'project' }),
+    );
+
+    expect(select).not.toHaveBeenCalled();
+    expect(result.language).toBe('zh');
+    expect(platformSelectPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '选择要配置的平台：',
+        selectedLabel: '已选择：',
+        emptyLabel: '无',
+        requiredErrorLabel: '请至少选择一个平台。',
+        required: true,
+      }),
+    );
+    expect(checkbox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: '选择要安装/升级的 npm 依赖：',
       }),
     );
   });

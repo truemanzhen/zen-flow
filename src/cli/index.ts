@@ -59,7 +59,7 @@ program
   .option('--overwrite', 'Overwrite manifest-managed files')
   .option('--json', 'Output as JSON')
   .addOption(new Option('--scope <scope>', 'Install scope').choices(['global', 'project']))
-  .addOption(new Option('--language <lang>', 'Language for skills').choices(['en', 'zh']))
+  .addOption(new Option('--language <lang>', 'CLI prompt/output language').choices(['en', 'zh']))
   .action(async (targetPath = '.', options) => {
     try {
       await initCommand(targetPath, options);
@@ -588,7 +588,7 @@ program
   .option('--json', 'Output as JSON')
   .option('--dry-run', 'Preview update actions without changing files')
   .option('--setup-only', 'Skip npm self-update and refresh local setup only')
-  .addOption(new Option('--language <lang>', 'Language for skills').choices(['en', 'zh']))
+  .addOption(new Option('--language <lang>', 'CLI prompt/output language').choices(['en', 'zh']))
   .addOption(new Option('--scope <scope>', 'Install scope').choices(['global', 'project']))
   .addOption(new Option('--skip-npm', 'Skip npm package self-update').hideHelp())
   .action(async (targetPath = '.', options) => {
